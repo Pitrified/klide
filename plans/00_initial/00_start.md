@@ -50,10 +50,12 @@ It fits the project's constraints better than any newer one:
 * It needs a factory reset into demo mode, and the device must have no password lock. The reset wipes documents, already acceptable here.
 * It installs its own hotfix rather than the standard one.
 
-One conflict the sources do not settle: the kindlemodding gitbook page is titled "LanguageBreak (5.14.3-5.16.2.1.1)",
-while the upstream repo says "any kindle running FW 5.16.2.1.1 or lower" and notes the exploit "works best around version 5.16.2".
-5.14.1.1 is below 5.14.3. Whether that lower bound is real or just the range someone tested is unknown.
-Handling is in [`01_root_access.md`](01_root_access.md).
+On the apparent lower bound: the kindlemodding gitbook page is titled "LanguageBreak (5.14.3-5.16.2.1.1)", and 5.14.1.1 sits below that.
+Checked again on 2026-09-04: the upstream repo states no lower bound at all, only "any kindle running FW 5.16.2.1.1 or **LOWER**",
+and adds that the exploit "works best around version 5.16.2, so if you are on lower firmware you should consider updating".
+Read together, the gitbook title looks like the range someone tested rather than a hard floor, and the risk at 5.14.1.1 is
+reliability rather than incompatibility. That supports trying directly (Q2: a) before considering the sideload.
+Handling is in [`01_root_access.md`](../01_implementation/01_root_access.md).
 
 Sideloading a controlled update is the fallback: copy the `.bin` to the USB root and use Settings > Update Your Kindle.
 That works offline, so airplane mode stays on. Firmware archive: `files.cocaine.trade/firmware/kindle/`.
