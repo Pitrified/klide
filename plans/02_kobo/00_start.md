@@ -26,16 +26,43 @@ No demo mode, no timing-critical replug, no anti-rollback, no OTA fear. Wifi is 
 
 - Panel and toolchain are the well-trodden path. FBInk's main platform is Kobo, most i.MX rather than the PW5's MT8113, which removes the largest unknown in the display spike.
 - KOReader on Kobo is a first-class target with published builds, not a post-jailbreak add-on.
-- Reversibility is native: KFMon ships an uninstaller, NickelMenu removes itself from a file in `.adds/nm/`, and KOReader is a directory.
+- Reversibility is native: KFMon ships an uninstaller and KOReader is a directory.
 - Wifi from day one means the Tailscale answer (Q4) can be exercised immediately, and the USB-networking workaround for a freshly rooted device is not needed.
 
 ## Harder
 
-- Model and firmware are unknown and decide a lot. Kobo firmware 5.x breaks NickelMenu; KFMon supports it, and KOReader's Kobo v5 support arrived in nightlies in July 2026. On 4.x both launchers are available.
+- Model and firmware are unknown and decide a lot. KOReader's Kobo v5 support arrived in nightlies in July 2026, so on firmware 5.x the build is a nightly rather than a release.
 - Screen size and DPI are unknown until the model is, so the renderer's layout numbers cannot be fixed yet.
 - Firmware updates arrive when the device syncs and disable KFMon. On the Kindle the answer was to block updates permanently; here it is to reinstall, because blocking updates on a borrowed device is exactly the kind of change that is hard to hand back.
 - Nickel keeps running. Whatever draws to the framebuffer has to coexist with it or stop it and put it back.
 - The loan has an end date, and device-specific findings may not carry to the PW5.
+
+## Launcher
+
+Nickel, the stock UI, will not start anything that is not Kobo's, and there is no app list or shell to reach from it.
+A launcher is the bridge: something running outside Nickel that notices an action the user can take inside it, and spawns a program.
+
+KFMon is a daemon started at boot from a udev rule. It watches with inotify for one chosen file being opened in Nickel and runs the command bound to it.
+The KOReader entry looks like a book in the library; tapping it starts KOReader.
+NickelMenu instead hooks Nickel's own menus and adds real entries to them, running arbitrary commands, chaining them, toggling wifi, rebooting, showing command output.
+
+KFMon is the choice: it supports firmware 5.x and NickelMenu does not, it does not hook into Nickel, and it ships an uninstaller.
+
+What that costs:
+
+- Arbitrary commands from the stock UI. Each KFMon action needs its own watched file, and each shows up in the owner's library. One entry for klide is fine, a menu of utilities is not.
+- Launching from where you already are. A KFMon trigger means going to the library and opening the item.
+- The on-device conveniences, wifi toggle, reboot, run a script and show its output. Those move to the host over SSH.
+
+None of it is on the critical path, because klide needs exactly one launch action.
+
+Skipping the launcher entirely is possible once a shell exists, since KOReader and klide can then start from the host.
+Getting that first shell is the catch: dropbear ships inside KOReader, which is what the launcher starts.
+The way out is Kobo's own debug services, `EnableDebugServices=true` under `[DeveloperSettings]` in `.kobo/Kobo/Kobo eReader.conf`,
+reported to give root telnet on 4.x on current models and unverified on 5.x.
+That is one config line and the most reversible root access available.
+The alternative, a `KoboRoot.tgz` that drops a boot script, is a root filesystem change and is not worth it here.
+Test debug services first (K1); if they work, the launcher is a convenience rather than a dependency.
 
 ## Technology choices to revisit
 
