@@ -64,6 +64,8 @@ That is one config line and the most reversible root access available.
 The alternative, a `KoboRoot.tgz` that drops a boot script, is a root filesystem change and is not worth it here.
 Test debug services first (K1); if they work, the launcher is a convenience rather than a dependency.
 
+See KD1 below, which settles how much the device is asked to do.
+
 ## Technology choices to revisit
 
 - Q3, on-device client shape. The reversibility constraint pushes it to the KOReader plugin: a plugin is files under `.adds/koreader/plugins/`, removed by deleting them, and it inherits touch input. A cross-compiled FBInk binary is more to install and more to leave behind, and it needs a different koxtoolchain target than the Kindle work assumed.
@@ -74,6 +76,14 @@ Test debug services first (K1); if they work, the launcher is a convenience rath
 
 - Continued reading is free. Nickel and the owner's library stay in place, so Q5 turns from a requirement into a side effect.
 - Touch navigation gets cheaper through the plugin path, but D11 does not reverse: klide is read-only toward Claude because it tails a transcript, which is a host-side fact and has nothing to do with the device.
+
+## Decisions
+
+* **KD1. One launch action on the device, everything else from the host by preference.**
+  The Kobo starts a single thing. Driving, debugging, restarting and inspecting normally happen over a network shell,
+  ssh, telnet, Tailscale or USB, from a machine with a real screen and keyboard rather than a small, laggy e-ink one.
+  Picking the device up and doing something on it is allowed where that is simply easier; it just should not be the routine path.
+  Consequences: KFMon's one-file-per-action limit stops mattering, and the on-device conveniences NickelMenu would have given are not missed.
 
 ## Open questions
 
