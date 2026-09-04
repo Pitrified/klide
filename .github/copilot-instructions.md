@@ -43,6 +43,25 @@ prose; the bullets are what tends to go wrong on the way there.
 >
 > Emerson, *Self-Reliance*
 
+## Planning
+
+Plans are written to keep the reasoning from being re-derived, not to close the question.
+Anything in them can be reopened: a decision, an answered question, a phase, the shape of the whole thing.
+Reopening on new evidence is the plan working, not the plan failing.
+Record what changed and leave the previous answer visible rather than editing it away.
+
+Write each point at the strength it actually has.
+"for now", "until the spike reports", "unless X changes" are accurate about most choices and cost nothing to write.
+Reserve "never", "must" and "hard requirement" for the few things that really are fixed,
+such as a stated cost ceiling or a device that has to go back intact.
+Pompous phrasing outlives the thought behind it: a line written as an absolute gets read a month later as a deal breaker,
+and then something obvious does not get tried.
+
+Weight remarks by how they were made.
+An offhand comment is a signal, not an instruction.
+When one would become a constraint, either mark it provisional in the plan or ask before promoting it.
+The same goes for a preference expressed once in passing; it does not need to be enforced everywhere forever.
+
 ## Spellcheck
 
 When the spellchecker flags a technical term or a British/American spelling, add it to
