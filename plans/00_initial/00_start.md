@@ -50,16 +50,24 @@ It fits the project's constraints better than any newer one:
 * It needs a factory reset into demo mode, and the device must have no password lock. The reset wipes documents, already acceptable here.
 * It installs its own hotfix rather than the standard one.
 
-On the apparent lower bound: the kindlemodding gitbook page is titled "LanguageBreak (5.14.3-5.16.2.1.1)", and 5.14.1.1 sits below that.
-Checked again on 2026-09-04: the upstream repo states no lower bound at all, only "any kindle running FW 5.16.2.1.1 or **LOWER**",
-and adds that the exploit "works best around version 5.16.2, so if you are on lower firmware you should consider updating".
-Read together, the gitbook title looks like the range someone tested rather than a hard floor, and the risk at 5.14.1.1 is
-reliability rather than incompatibility. That supports trying directly (Q2: a) before considering the sideload.
+On the version to run it at: the kindlemodding gitbook page is titled "LanguageBreak (5.14.3-5.16.2.1.1)", and 5.14.1.1 sits below that.
+The current kindlemodding page states only the ceiling, "LanguageBreak will NOT work on firmwares newer than 5.16.2.1.1", with no lower bound and no upgrade advice.
+The upstream repo also states no lower bound, but recommends upgrading twice, and the second time as a warning:
+"The exploit works best around version 5.16.2, so if you are on lower firmware you should consider updating",
+and, in the Warnings block, "This method works up to firmware version `5.16.2.1.1`. It is strongly suggested you upgrade to this firmware before starting."
+Its troubleshooting section answers "having general issues?" with the same instruction and the download URLs to do it.
+So the gitbook title is not a hard floor, but the author's own guidance is to update to the ceiling first rather than to run the exploit from below it.
+Rechecked 2026-09-04, and it moves Q2 from a to b: update to 5.16.2.1.1 offline, then jailbreak.
 Handling is in [`01_root_access.md`](../01_implementation/01_root_access.md).
 
-Sideloading a controlled update is the fallback: copy the `.bin` to the USB root and use Settings > Update Your Kindle.
-That works offline, so airplane mode stays on. Firmware archive: `files.cocaine.trade/firmware/kindle/`.
+The update sideloads offline: copy the `.bin` to the USB root and use Settings > Update Your Kindle, so airplane mode stays on.
+The PW5 image is on Amazon's own S3 and needs no community archive:
+`https://s3.amazonaws.com/firmwaredownloads/update_kindle_all_new_paperwhite_11th_5.16.2.1.1.bin`,
+confirmed reachable on 2026-09-04 (HTTP 200, content-length 299464378).
+The community archive `files.cocaine.trade/firmware/kindle/` is the backup source and a second copy to compare against, since Amazon publishes no checksum.
 **Never past 5.16.2.1.1** - 5.16.3 introduced breaking changes and later versions patch LanguageBreak.
+The update is one-way until the device is rooted: kindlemodding's downgrade procedure requires a jailbreak.
+Nothing in this project needs 5.14.1.1, so that costs nothing beyond losing the option to retry the exploit lower down.
 
 Once jailbroken, block OTA updates with `renametobin` before wifi is ever enabled.
 That must be reverted before any deliberate update or factory reset, or the device locks.
@@ -222,7 +230,7 @@ Not open questions for the user; these are measurements, and [`02_display_spike.
 * Does FBInk fully support the PW5 panel. The PW5 is MediaTek MT8113, not the i.MX in older Kindles, and waveform and refresh-mode handling differ. Most published prior art is on i.MX devices.
 * Latency of a small partial refresh, and how many partial updates before ghosting forces a full one.
 * Touch input path: which `/dev/input` node, what protocol, and whether reading it fights the running framework.
-* Whether a PW5 5.16.2.1.1 `.bin` is in the community firmware archive, and whether the offline sideload path works from 5.14.1.1.
+* Whether the offline sideload path applies 5.16.2.1.1 in one jump from 5.14.1.1, or whether Amazon expects intermediate versions. The `.bin` itself is confirmed available (see Jailbreak).
 * Battery life with wifi held open and frequent redraws.
 
 ## Open questions
@@ -238,6 +246,8 @@ Not open questions for the user; these are measurements, and [`02_display_spike.
   b. Sideload 5.16.2.1.1 first, then jailbreak once on the version the exploit is known good on.
   Recommended: a, because it costs only time if it fails and leaves b fully available, whereas b is irreversible.
   ANS: a, "if it really cost anything". Phase 1 already sequences it this way. The remark is the point: attempting the exploit at 5.14.1.1 is close to free, so there is nothing to weigh against the irreversibility of b.
+  REVISED 2026-09-04 to b, on re-reading the upstream README. It says to upgrade to 5.16.2.1.1 before starting, states it in the Warnings block, and repeats it as the answer to general failures.
+  The premise of a was also weaker than it looked: a failed attempt costs a factory reset and a full demo-mode setup per retry, not just time, and the irreversibility of b only removes the option of being on 5.14.1.1, which nothing here needs.
 - Q3: On-device client shape. This is the main architectural fork.
   a. Standalone binary using FBInk, cross-compiled with koxtoolchain.
   b. KOReader plugin in Lua.

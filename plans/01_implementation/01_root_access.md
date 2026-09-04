@@ -37,10 +37,15 @@ Context: [`../00_initial/00_start.md`](../00_initial/00_start.md).
   "Resell Device" from the demo menu, **replug to the PC the moment the "press power button" message appears** and sideload a second time,
   then select Chinese, second from last in the right-hand list. The device reboots into log output.
 - Note the timing step above is the only one that is not self-paced. Have the files staged on the host and the cable connected before starting the Resell operation.
-- Attempt LanguageBreak at 5.14.1.1 (Q2: a). It needs a factory reset into demo mode, then a two-stage sideload during a "Resell Device" operation.
-- If it fails: sideload the 5.16.2.1.1 `.bin` over USB via Settings > Update Your Kindle, offline, then retry. Never update past 5.16.2.1.1.
+- Update the device to 5.16.2.1.1 first (Q2: b, revised), because LanguageBreak's own instructions say to upgrade to that version before starting and give it as the answer to general failures.
+  Download `update_kindle_all_new_paperwhite_11th_5.16.2.1.1.bin` from `https://s3.amazonaws.com/firmwaredownloads/`, copy it to the USB root, and use Settings > Update Your Kindle.
+  Offline throughout, so airplane mode stays on. Never update past 5.16.2.1.1.
+  Amazon publishes no checksum, so fetch a second copy from `files.cocaine.trade/firmware/kindle/` and compare SHA-256 before applying.
+  Confirm `system/version.txt` afterwards.
+- Then attempt LanguageBreak. It needs a factory reset into demo mode, then a two-stage sideload during a "Resell Device" operation.
+- If the update itself will not apply from 5.14.1.1, attempt LanguageBreak at 5.14.1.1 anyway; the exploit has no stated lower bound.
 - Install the LanguageBreak hotfix (its own, not the standard one): `;uzb` in the search bar, copy `update_hotfix_languagebreak.bin` to root, then `;dsts` and select update. Then KUAL and MRPI.
-- Note this contradicts the no-`.bin` rule above only in appearance: that rule is a precondition for starting, because a `.bin` at root means a staged OTA. Placing the hotfix `.bin` deliberately, later, is the intended flow.
+- Note the hotfix `.bin` and the firmware `.bin` contradict the no-`.bin` rule above only in appearance: that rule is a precondition for starting, because a `.bin` found at root means a staged OTA nobody put there. Placing one deliberately is the intended flow, and each is removed once applied.
 - Block OTA with `renametobin`. Record in this file how to revert it, because a factory reset while it is active locks the device.
 - Install a shell path: USBNetwork for dropbear over USB, and kterm on-device as a fallback that needs no host.
 - Install KOReader (Q5: yes), so the device is still a usable reader independent of klide.
@@ -62,7 +67,9 @@ Context: [`../00_initial/00_start.md`](../00_initial/00_start.md).
 ## Risks
 
 - ~~The setup wizard may require wifi.~~ **Resolved 2026-09-04 by reading the walkthrough.** Airplane mode ON is a stated prerequisite of the exploit, the setup wizard's wifi step is dismissed by selecting any network and backing out, and demo mode's own setup is skipped with fake information. No step needs a network or an Amazon account. Watch for one small tension at the screen: with airplane mode on there may be no networks listed to select and back out of.
-- The 5.14.3 lower bound on the kindlemodding page may be real, in which case the direct attempt fails. Handled by the sideload fallback above; costs time, not the device.
+- The 5.14.1.1 to 5.16.2.1.1 jump may not apply in one step if Amazon expects intermediate versions. Then apply the closest intermediate version available and repeat, still offline, still never past 5.16.2.1.1.
+- A failed or interrupted flash is the one new risk the update step adds. It is Amazon's own signed image applied through the stock updater, which is the supported path, but verify the download against a second copy first and keep the device on the charger through the update.
+- The update is one-way until the device is rooted: kindlemodding's downgrade procedure requires a jailbreak. Nothing here needs 5.14.1.1, so the cost is losing the option of retrying the exploit from below 5.16.2.
 - A factory reset with `renametobin` already active locks the device. Order matters: reset first, jailbreak, then block updates.
 - If both firmware levels fail, the project stops and gets reconsidered (Q6). There is no automatic migration to other hardware; the vendor comparison in the research file is background, not a queued fallback.
 
