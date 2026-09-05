@@ -93,12 +93,41 @@ Everything on the list except the diff is a scrolling column of text, which is t
 ## To measure in the spike
 
 - Latency of a small partial refresh, and how many before ghosting forces a full one.
-- Whether a KOReader plugin can hold a socket open across a suspend and resume, and what happens if it cannot.
+- How long a reconnect and repaint takes after a wake. Holding the socket across a suspend is no longer needed, coming back fast is.
 - Poll interval that keeps the UI responsive without draining the battery.
 - Cost of a full frame against a dirty rectangle, once a real panel size is known.
+
+## Preliminary feelings
+
+Recorded 2026-09-05, from a first read of the above. Leanings, not settled.
+
+* **Device-side cache and a taller page buffer, yes.** Enough to drag the page around and to reopen something without a round trip.
+  Minimal to small: a handful of pages in memory, bounded, thrown away on exit. No database and nothing to maintain on the device.
+  512 MB of RAM against a 2 MB frame means the ceiling is a design choice, not a hardware limit.
+* **Fullscreen, gladly.**
+* **Sleep is not a problem.** This is an interactive sink for checking on an assistant, not an unattended dashboard, so the device sleeps
+  the way it normally does and no keep-alive machinery is needed. What that does require is a clean resume: reconnect and repaint quickly
+  on wake. The socket does not have to survive a suspend, it has to come back without ceremony.
+* **K5, yes.** The device holds a little state. See the cache note above for the size.
+* **K6, keep showing the cache and overlay a marker.** A stale frame with a visible warning beats a blank screen.
+  This is the one place the client has to draw something itself rather than blit what it was sent, since the host is by definition gone.
+  As a KOReader plugin that is free.
+
+## Pinch to zoom
+
+The gesture is available, KOReader detects pinch and spread. What is not available is a smooth zoom.
+
+Two reasons. The panel cannot track fingers continuously, so anything gradual will look like a slideshow of intermediate states.
+And the frame is a bitmap the host rendered at one size, so scaling it on the device gives a blurry image rather than more detail.
+
+The workable version is discrete: detect the gesture, treat it as one step of text size, ask the host to re-render, replace the frame.
+A scaled version of the cached bitmap can fill the gap while the real frame arrives, if the wait is visible.
+Same shape as dragging, where the honest approach is to move in steps or to settle on release rather than to promise
+continuous feedback the panel cannot deliver.
 
 ## Open questions
 
 - K4: Which of the spectrum options for the first working version. Leaning 2, with 4 added if scrolling feels bad.
-- K5: Does the device hold any state beyond the current frame. Caching conversations makes reopening one instant and makes the client much less dumb.
-- K6: What happens on disconnect. Blank screen, last frame with a marker, or a local message.
+- ~~K5: Does the device hold any state beyond the current frame.~~ Yes, a small bounded cache. See Preliminary feelings.
+- ~~K6: What happens on disconnect.~~ Keep showing the cache, overlay a marker.
+- K9: How the taller page buffer and the cache interact. One is for panning inside a view, the other for revisiting views, and they may or may not be the same thing.
