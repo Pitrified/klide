@@ -7,6 +7,31 @@ status: draft
 A friend lends a Kobo. Research and decisions for the Kindle path stay in [`../00_initial/00_start.md`](../00_initial/00_start.md);
 this folder covers only what differs. Web research 2026-09-04, nothing tested, and the device is not in hand yet.
 
+## Device
+
+Reported by the owner on 2026-09-05, from the device's own information screen. Not yet verified against `.kobo/version` on the device.
+
+* Serial prefix `N418`, which identifies the Kobo Libra 2. The rest of the serial is the owner's and stays out of the repo.
+* Firmware `4.38.23552`, built 2025-11-13.
+* 7 inch E Ink Carta 1200, 1264x1680 at 300 ppi. 512 MB RAM, 32 GB storage, no card slot. USB-C, Bluetooth, waterproof.
+* Physical page-turn buttons, which the Kindle path did not have.
+* i.MX6 SLL, not MediaTek.
+
+Three consequences:
+
+* The firmware 5.x worry does not apply here. 4.38.23648 from March 2026 is the newest build for this model, one point release ahead of what is on the device, and the 4.46 line went only to the Colour models. Nothing on this device's update path breaks the launchers today.
+* i.MX6 is the platform FBInk and KOReader are most mature on, and it is where nearly all the prior art was written. The MT8113 unknown that hangs over the PW5 does not exist here.
+* NickelMenu is technically back on the table, since it is a 4.x device. KFMon still wins on not hooking into Nickel and on shipping an uninstaller, which are the reasons that matter for a borrowed device, so this is noted rather than reopened.
+
+## What does not go in the repo
+
+This is a public repo and the device is not ours, so the analysis is recorded and the identifiers are not.
+
+Out: the full serial, the owner's Kobo account or email, wifi SSIDs and keys, MAC addresses, Tailscale hostnames and IPs, the device's library or reading history, and photographs of the setup screens.
+In: model, firmware version and build date, hardware specs, everything measured, and every change made with its removal step.
+
+The pre-loan record of settings and installed software is worth keeping, but it belongs in a local note, not here.
+
 ## New constraint
 
 The device goes back. Nothing risky, nothing hard to restore.
@@ -87,6 +112,8 @@ See KD1 below, which settles how much the device is asked to do.
 
 ## Open questions
 
-- K1: Which Kobo, and on which firmware. Needed before anything else; ask the friend for the model and Settings > Device information.
+- ~~K1: Which Kobo, and on which firmware.~~ Answered 2026-09-05, see Device. Kobo Libra 2 on 4.38.23552. The debug-services test from the Launcher section is still open and moves to K7.
 - K2: How long the loan is, and whether the friend accepts a documented, reversible install at all, or only what the stock UI allows.
 - K3: Does this replace the Kindle path or run beside it. The Kindle plan is mid-phase 1 with the firmware update not yet applied.
+- K7: Does `EnableDebugServices=true` still give a root telnet on firmware 4.38. Decides whether the launcher is a dependency or a convenience.
+- K8: What else the device is carrying. Free space on the user partition, whether it is signed in to the owner's Kobo account, whether wifi is configured and an update is pending, and whether anything is already installed under `.adds/`.
