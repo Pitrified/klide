@@ -26,8 +26,10 @@ From most host-side to most device-side.
 4. **Taller-than-screen pages.** Host renders a page several screens tall, device pans within it locally. Swipes get instant feedback without a round trip, at the cost of the device holding state.
 5. **Semantic content.** Host sends structured content, device lays it out. Contradicts D1 and puts the interesting work in Lua.
 
-There is also a non-option worth naming so it stops coming up: generating an epub or HTML per conversation and letting KOReader open it.
-Cheap, and it fails the primary requirement, which is continuous update with no reload.
+Two non-options worth naming so they stop coming up.
+Generating an epub or HTML per conversation and letting KOReader open it: cheap, and it fails the primary requirement, which is continuous update with no reload.
+An Android app: that was the Boox row in the vendor comparison, and Kobo runs embedded Linux with Nickel, a Qt application, on top.
+Nothing on the device runs an APK. What Android would have supplied, a toolkit with touch, layout and sockets already solved, is what KOReader supplies here.
 
 A hybrid of 2 and 4 is the obvious first guess: dirty rectangles for streaming text, a taller page buffer for scrolling.
 
