@@ -11,6 +11,8 @@ The app being built alongside is tracked in [`../04_klide_app/00_start.md`](../0
 - The interaction itself is under review, on a cadence, looking for painful exchanges (MD4).
 - Tracked development is scaffolding for the bootstrap phase and is expected to change shape (MD7).
 - pstack is the main external source read so far. Cherry-picking is the recommendation, not adoption (M1, open).
+- Concurrency is the last dial to turn: one agent, sometimes two, in worktrees, until the interactions hold (MD8, M9).
+  Cloud sessions are available on this plan with no compute charge, and stay in the background until something needs them.
 
 ## Phases
 
@@ -29,3 +31,4 @@ Status values: draft / planned / in progress / done / superseded / discarded.
 Append-only. Newest at the bottom.
 
 - 2026-09-15 : researched Lauren Tan's pstack and the recaps of her Cursor agent talk; bootstrapped this folder with the two-track split, decisions MD1-MD7 and open questions M1-M8. No phase started, and every phase is `draft` until the M batch is answered
+- 2026-09-16 : answered how her method meshes with a greenfield project, that her own repo ships a multi-phase plan playbook and that the disagreement is about resolving technical forks in prose rather than about direction; checked what "each agent its own machine" costs here, and found Claude Code cloud sessions run an isolated VM per session on this plan with no separate compute charge. Folded in M9: worktrees for now, GitHub App kept in the background. Added MD8, start at one or two agents and increase slowly

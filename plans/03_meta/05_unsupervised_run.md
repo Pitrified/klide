@@ -23,12 +23,13 @@ Context: [`00_start.md`](00_start.md). Depends on phases 2, 3 and 4, and on M4 f
   No push is possible from this box, which is a useful accident.
 - Run it. Keep everything: transcript, gate output, artifacts.
 - Review against the evidence contract from phase 3, not against the summary the agent wrote about itself.
-- Only then consider width: a second agent, an adversarial reviewer, or a swarm.
-  The rigor comes first, which is the whole argument of the source material.
+- Only then consider width, and only one step of it: a second agent, in a worktree (MD8).
+  The rigor comes first, which is the whole argument of the source material, and concurrency is the last dial to turn.
 
 ## Out of scope
 
 - Long overnight runs, until one short run has been trusted.
+- More than two agents at once, and the cloud path (M9).
 - Anything touching the borrowed Kobo.
 
 ## Done when

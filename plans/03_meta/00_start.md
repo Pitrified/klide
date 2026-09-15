@@ -68,6 +68,63 @@ That is an unusually good starting position for this experiment. There is no leg
 the stack is open, and the first real workload is a simulator whose output is an image,
 which is the cheapest possible form of observable evidence.
 
+## Planning against "the best spec is code"
+
+Her position is narrower than the slogan, and her own repo shows it.
+pstack ships a multi-phase plan playbook and a prototype playbook, and the README says cursor's plan mode
+"works great with pstack". The claim is about defaults, not about capability: planning is not the first move,
+and a plan is not the artifact.
+
+It also comes from a specific situation. She works in a large existing codebase where the product direction
+is already set, the domain is known, and the expensive failure is an agent writing plausible code that is wrong.
+In that setting a prose plan is a second source of truth that drifts from the first one.
+
+A new project does not have that. Two things her system consumes rather than produces:
+the product direction, and the finish condition. `/poteto-mode` is invoked with a goal and a definition of done;
+it never invents them. So the part of our planning that says what klide is for, what it must do, and what is
+out of bounds is not in competition with her method. It is the input it assumes.
+
+The part that is in competition is the rest of our plan folders: prose that resolves technical forks.
+Which transport, which client shape, which launcher, which stack. Her answer to those is not a paragraph,
+it is a prototype or a type signature, and two of her principles say so directly, exhaust-the-design-space
+(build 2-3 competing prototypes and compare) and foundational-thinking (settle the data structures first).
+
+Where that leaves this repo: keep prose for direction, constraints and the record of why, since code holds
+none of those. Move fork-resolution out of prose and into things that run. A1 in the app track is the first test
+of that, and it is already written as "build the slice twice and keep what survives the gates" rather than
+"decide the stack".
+
+## Each agent its own machine
+
+What she proposes is Cursor cloud agents: each agent gets an isolated VM with a real computer, so it can install
+dependencies, run the app, drive a browser, take screenshots and video, and interact with the product as a user would.
+Her argument against worktrees is resources, that a strong machine runs maybe ten agents before it strains,
+and that a worktree gives an agent a directory rather than a computer.
+Cursor charges those agents at API pricing, which D6 rules out for us.
+
+What we have, checked 2026-09-16:
+
+* **Claude Code cloud sessions.** Research preview, and it includes Pro. Each session runs in its own
+  Anthropic-managed VM, network access is restricted by an allowlist, and git credentials stay outside the sandbox.
+  Start one per task with `claude --cloud "<task>"`, several in parallel, and pull one back with `--teleport`.
+  The relevant line for D6: sessions share the account's normal rate limits and there is no separate compute charge
+  for the VM. So the shape she describes is available here without API billing.
+* **The wrinkle.** Cloud sessions clone from GitHub, and this box holds no GitHub credentials by design.
+  Either the Claude GitHub App gets installed on the repo from the user's own browser, or `CCR_FORCE_BUNDLE=1`
+  uploads the local repository instead, in which case the session cannot push back.
+* **Locally.** Subagents can run in a git worktree, the Bash tool has an OS-enforced filesystem and network sandbox
+  via `/sandbox`, and dev containers or VMs sit above that. This is the cheap end, and it is a directory plus a
+  boundary rather than a computer.
+
+The honest read for klide: her argument for a real computer is about verifying behaviour by driving the product.
+Our product is a simulator that emits frames, which is the one case where a directory is nearly enough, because the
+evidence is a file rather than a screen someone has to look at. That makes worktrees adequate for longer here than
+they would be for a browser app, and it makes the cloud path worth trying for the runs that need isolation rather
+than as the default.
+
+Answered in M9: worktrees for now, and the cloud path stays available rather than planned.
+At the concurrency MD8 sets, the machine is not the limit anyway.
+
 ## Decisions
 
 Taken from the framing above, not re-derived.
@@ -83,6 +140,10 @@ Taken from the framing above, not re-derived.
   what makes the app testable by an agent.
 * **MD6. The stack is open.** Rust, Go, Flutter or anything else, for the host, the renderer and the simulator,
   GPU where it helps.
+* **MD8. Start at one or two agents and earn more.** The workshop outline calls this the agent trust curve,
+  micromanagement at one end and automated merging at the other, moved along slowly. Concurrency is the last dial
+  to turn, not the first: one agent, occasionally two, while the meta interactions and the constraints are still
+  being shaped. Worktrees carry that comfortably, which is why M9 defers the cloud path rather than taking it.
 * **MD7. Tracked development is bootstrap scaffolding.** It stays until the guardrails can carry the same load,
   and it is expected to change shape rather than be preserved.
 
@@ -124,4 +185,15 @@ Numbered `M` for this folder, continuing across batches.
   NEW_ANS:
 - M8: The parallelism model. Claude Code has worktrees and background agents. Lauren Tan's position is that
   each agent wants its own machine. What do we actually run here, on one box.
+  NEW_ANS:
+- M9: Whether to enable the cloud path at all, and how. Installing the Claude GitHub App on the repo gives cloud
+  sessions that can push, at the cost of a GitHub App with write access to the repo. `CCR_FORCE_BUNDLE=1` needs
+  nothing but cannot push back.
+  Recommended: bundle mode first, since the results can be teleported back and nothing new gets write access.
+  ANS: neither for now. Worktrees until this machine strains. The GitHub App stays in the background as the option
+  to reach for if isolation or push access turns out to be the thing blocking a run, and it is installed from the
+  user's own browser when that happens. See MD8 for the concurrency this assumes.
+- M10: What isolation each class of work gets. Same session, subagent, worktree, sandboxed bash, cloud VM.
+  Recommended: decide it by blast radius rather than by size of task, and write it into the interaction contract
+  in phase 3.
   NEW_ANS:
