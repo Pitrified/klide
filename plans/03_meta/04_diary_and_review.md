@@ -1,5 +1,5 @@
 ---
-status: draft
+status: planned
 ---
 
 # Phase 4 - Diary and session review
@@ -7,7 +7,7 @@ status: draft
 ## Overview
 
 The learning half. Without a record, the experiments leave nothing behind and the same painful interaction
-happens twice. Context: [`00_start.md`](00_start.md). Depends on M5 and M6.
+happens twice. Context: [`00_start.md`](00_start.md). M6 sets the diary shape, one file per experiment with fixed frontmatter. M5 leaves the cadence flexible on purpose.
 
 ## Goals
 

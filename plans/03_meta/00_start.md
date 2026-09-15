@@ -140,6 +140,12 @@ Taken from the framing above, not re-derived.
   what makes the app testable by an agent.
 * **MD6. The stack is open.** Rust, Go, Flutter or anything else, for the host, the renderer and the simulator,
   GPU where it helps.
+* **MD9. The unsupervised boundary is what this box can reach.** An agent may eventually do anything that needs
+  no GitHub credentials: edit, commit, branch, use worktrees, run whatever it likes locally. Push, PR and merge sit
+  outside it because the box has no credentials for them, so the limit is enforced by the machine rather than by an
+  instruction an agent could talk itself out of (M4).
+* **MD10. The frame is the evidence.** Verification for klide is a rendered frame compared against a reference,
+  and the simulator exists to produce it (M7). This is the one lever worth building before anything else.
 * **MD8. Start at one or two agents and earn more.** The workshop outline calls this the agent trust curve,
   micromanagement at one end and automated merging at the other, moved along slowly. Concurrency is the last dial
   to turn, not the first: one agent, occasionally two, while the meta interactions and the constraints are still
@@ -157,35 +163,39 @@ Numbered `M` for this folder, continuing across batches.
   c. Ignore it and build from our own experience.
   Recommended: b, because the verification and evidence ideas transfer while 47 skills, Cursor built-ins
   and a per-session token cost do not fit a repo with no code yet.
-  NEW_ANS:
+  ANS: b.
 - M2: Where the meta artifacts live.
   a. Harness-native paths only, `.claude/skills/`, `.claude/agents/`, so they actually load.
   b. A `meta/` folder only, which loads nowhere and has to be copied.
   c. Harness-native paths for what must load, plus `meta/` for the diary, experiments and anything portable.
   Recommended: c.
-  NEW_ANS:
+  ANS: c. Harness-native paths for anything that must load, `meta/` for the diary and anything meant to travel.
 - M3: Which harnesses this has to work on. Claude Code only for now, or Cursor and others too.
   Recommended: Claude Code only until something works, since portability is the second problem.
-  NEW_ANS:
+  ANS: Claude Code.
 - M4: What "unsupervised" is allowed to mean here, concretely. Which actions an agent may take without asking:
   editing, committing, opening PRs, merging, pushing. Note this box has no GitHub credentials, so pushing is
   already impossible from here.
-  NEW_ANS:
+  ANS: eventually everything that can be done without GitHub credentials. Editing, committing, branching,
+  worktrees, running anything locally. Pushing, PRs and merges are outside the boundary because the box cannot
+  reach them, which makes the limit enforced rather than promised. "Eventually" is the operative word: the
+  permission grows as the runs earn it (MD8).
 - M5: The review cadence, and its trigger. Every N sessions, weekly, or at each phase boundary.
   Recommended: at each phase boundary plus a standing weekly slot, because painful interactions are easiest
   to recall while they are recent.
-  NEW_ANS:
+  ANS: flexible. At a phase boundary, straight after a painful interaction, daily, whenever it is worth doing.
+  No fixed schedule, and a review that finds nothing still gets logged.
 - M6: The diary format. One file per experiment, or an append-only log, and what a good entry contains.
   Recommended: one file per experiment with a fixed frontmatter, so entries can be graded later.
-  NEW_ANS:
+  ANS: as recommended.
 - M7: What counts as proof for this app. pstack's answer is interacting with the running product.
   klide's equivalent is a rendered frame, which suggests the simulator should emit images an agent can diff
   against a reference, and that this is the first lever to build.
   Recommended: yes, make frame-level evidence the verification primitive and design the simulator around it.
-  NEW_ANS:
+  ANS: yes. The frame is the evidence, and the simulator is built around producing it.
 - M8: The parallelism model. Claude Code has worktrees and background agents. Lauren Tan's position is that
   each agent wants its own machine. What do we actually run here, on one box.
-  NEW_ANS:
+  ANS: settled by MD8 and M9. One agent, sometimes two, in worktrees on this box.
 - M9: Whether to enable the cloud path at all, and how. Installing the Claude GitHub App on the repo gives cloud
   sessions that can push, at the cost of a GitHub App with write access to the repo. `CCR_FORCE_BUNDLE=1` needs
   nothing but cannot push back.
@@ -196,4 +206,4 @@ Numbered `M` for this folder, continuing across batches.
 - M10: What isolation each class of work gets. Same session, subagent, worktree, sandboxed bash, cloud VM.
   Recommended: decide it by blast radius rather than by size of task, and write it into the interaction contract
   in phase 3.
-  NEW_ANS:
+  ANS: flexible. Blast radius is the guide, not a table to look up.

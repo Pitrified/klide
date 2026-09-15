@@ -1,5 +1,5 @@
 ---
-status: draft
+status: planned
 ---
 
 # Phase 5 - First unsupervised run
@@ -8,7 +8,7 @@ status: draft
 
 The point of the other four phases. One bounded piece of real work, run without a person watching,
 and judged on whether the evidence it produced is trustworthy.
-Context: [`00_start.md`](00_start.md). Depends on phases 2, 3 and 4, and on M4 for what the agent is allowed to do.
+Context: [`00_start.md`](00_start.md). Depends on phases 2, 3 and 4, MD9 sets what the agent is allowed to do: anything needing no GitHub credentials.
 
 ## Goals
 

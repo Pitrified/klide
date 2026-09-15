@@ -1,5 +1,5 @@
 ---
-status: draft
+status: planned
 ---
 
 # Phase 1 - Adopt practices
@@ -8,7 +8,7 @@ status: draft
 
 Decide what this repo takes from existing agent-orchestration practice, and land it.
 First because everything after it is easier with the vocabulary settled, and cheap because it is reading and copying.
-Context: [`00_start.md`](00_start.md). Blocked on M1, M2 and M3.
+Context: [`00_start.md`](00_start.md). M1 is b, so this is a cherry-pick: read pstack, take a few skills and principles, write our own thin router later. M2 is c and M3 is Claude Code only.
 
 ## Goals
 
