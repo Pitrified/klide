@@ -44,6 +44,13 @@ runs beside the Kindle path, is still open and is a separate question from this 
   disconnect overlay, so the device client is later a port rather than a first attempt (A7).
 * **AD5. One wire protocol for simulator and device** (A6). Whatever the simulator speaks, the Kobo speaks.
 * **AD6. GPU only when something is measurably too slow**, and image rendering is the expected case (A4).
+* **AD8. Text is sized in typographic points against the panel's real ppi, never in pixels.**
+  The Libra 2 is 300 ppi, so a pixel size chosen while looking at a scaled-down frame on a desktop
+  monitor comes out at about a quarter of its apparent size on the device. The renderer's first
+  version used a 26 pixel font, which is 6.2 pt: roughly half the smallest size anyone sets a
+  paperback in. Avoiding eye strain is the reason for using an e-reader at all, so the floor is a
+  test rather than a note. Body text is 11 pt, which gives 23 lines and about 51 characters a
+  screen. `Panel.ppi` exists so that a point size means something.
 
 ## Open questions
 
@@ -89,3 +96,24 @@ Numbered `A` for this folder.
   disconnect overlay from [`../02_kobo/01_ui_ux.md`](../02_kobo/01_ui_ux.md), or only for the panel.
   ANS: yes, the client logic too. That makes the device client a port of something already working rather than
   a first implementation.
+- A8: How a person drives the simulator, and what that says about touch and drag.
+  Parked rather than answered, because nothing needs it yet: the simulator is headless (AD2) and phase 3 drives it
+  from a script, which is what an agent needs and what the gates use. The viewer is the thin layer on top that
+  does not exist.
+  What it would have to cover:
+  a. **The two physical page-turn buttons.** The easy part, and the case that motivated the question. A button in
+     the viewer sends the same `InputEvent.press` the script already sends, so this is a UI over an existing message.
+  b. **Tap.** Also easy, and already on the wire: a click at a point becomes `InputEvent.tap` with panel coordinates.
+     The viewer would need to map its own scaled window back to panel coordinates, since it will not be shown at
+     300 ppi on a desktop monitor.
+  c. **Swipe and drag, which is the actual question.** A mouse drag is continuous and the panel is not. The UI notes
+     already settle the principle for pinch: the panel cannot track fingers continuously, so anything gradual looks
+     like a slideshow of intermediate states, and the workable version is discrete steps or settling on release.
+     Drag is the same problem. Whether the simulator should imitate that badness faithfully, so a design that
+     assumes smooth dragging looks wrong in the simulator, is the part worth deciding deliberately rather than by
+     accident. MD10 argues it should: the simulator exists to make a bad design visible before hardware does.
+  d. **What an agent gets from it.** Probably nothing. The script is the agent's interface and it already covers
+     every gesture. This is for a person, which makes it lower priority than anything the gates use.
+  Which phase owns it is open. It is not phase 4, which is the host renderer and views, and it is not phase 5,
+  which is the device client. It may want a phase of its own, or it may stay unbuilt until someone wants to
+  look at klide rather than test it.

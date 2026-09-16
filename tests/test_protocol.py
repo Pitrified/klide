@@ -22,7 +22,7 @@ from klide.protocol import (
 )
 from klide.waveform import Waveform
 
-TINY = Panel(name="tiny", width=4, height=2, grey_levels=16)
+TINY = Panel(name="tiny", width=4, height=2, grey_levels=16, ppi=300)
 LEVELS = bytes([0xA, 0xB, 0xC, 0xD, 1, 2, 3, 4])
 
 
@@ -105,7 +105,7 @@ def test_a_truncated_payload_raises_rather_than_producing_a_short_frame() -> Non
 
 def test_a_depth_mismatch_is_refused_rather_than_misread() -> None:
     stream = io.BytesIO(encode_frame(a_frame()))
-    two_level = Panel(name="mono", width=4, height=2, grey_levels=2)
+    two_level = Panel(name="mono", width=4, height=2, grey_levels=2, ppi=300)
     with pytest.raises(ProtocolError, match="bpp"):
         read_frame(stream, two_level)
 

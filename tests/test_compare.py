@@ -12,7 +12,7 @@ from klide.compare import (
 from klide.frame import Frame
 from klide.panel import Panel
 
-TINY = Panel(name="tiny", width=4, height=2, grey_levels=16)
+TINY = Panel(name="tiny", width=4, height=2, grey_levels=16, ppi=300)
 
 
 def a_frame(levels: bytes) -> Frame:
@@ -45,7 +45,7 @@ def test_the_failure_locates_the_first_difference() -> None:
 
 
 def test_a_size_mismatch_fails_instead_of_raising() -> None:
-    other = Panel(name="other", width=2, height=2, grey_levels=16)
+    other = Panel(name="other", width=2, height=2, grey_levels=16, ppi=300)
     wrong_size = Frame(panel=other, x=0, y=0, width=2, height=2, levels=bytes(4))
     result = compare(wrong_size, a_frame(bytes(8)), "resized")
     assert not result.matched

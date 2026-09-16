@@ -34,6 +34,17 @@ The absolute values are not trustworthy. Carta 1200 claims a response time impro
 the device is in hand, measuring each mode and replacing `FBINK_CLAIMS` is the whole of the change,
 because everything reads durations through `Mode`.
 
+## Physical size, which is not negotiable
+
+7 inch diagonal, 1264x1680, 300 ppi, which is 107 x 142 mm of glass. Recorded because it is the
+fact most easily lost: every frame in this repo gets looked at on a desktop monitor at a fraction
+of its real density, and text that reads comfortably there is unreadable on the device.
+
+Body text is 11 pt, giving 23 lines and about 51 characters a screen, with an x-height of 2.03 mm.
+The renderer works in points and converts through `Panel.ppi` (AD8). A test holds the floor at 9 pt
+and another holds the line count in a comfortable range, because this was got wrong once: the first
+renderer used a 26 pixel font, which is 6.2 pt.
+
 ## Policy the client chose
 
 These are not properties of the panel. They are decisions klide made, and they are in the
@@ -73,6 +84,12 @@ instead.
 
 **Real time.** Nothing sleeps. `elapsed_ms` accumulates what the modes claim, so the cost of a
 design shows up as a number rather than as a slow test.
+
+**A viewer.** AD2 puts a thin viewer on top of the frame stream and it has not been built. The
+simulator is driven by a script, which is what an agent needs and what the gates use. A viewer is
+for a person, and the open question about what it would do with drag is A8 in the app track: a
+mouse drag is continuous and the panel is not, so the interesting decision is whether the viewer
+should imitate that badness faithfully rather than smooth it over.
 
 ## How the claims are checked
 

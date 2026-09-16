@@ -20,6 +20,7 @@ class Panel:
     width: int
     height: int
     grey_levels: int
+    ppi: int
 
     @property
     def bits_per_pixel(self) -> int:
@@ -31,8 +32,18 @@ class Panel:
         """Size of one packed full frame, the ceiling any transport has to move."""
         return self.width * self.height * self.bits_per_pixel // 8
 
+    def points_to_pixels(self, points: float) -> int:
+        """A typographic point is 1/72 inch, so a point size only means something with a ppi.
 
-KOBO_LIBRA_2 = Panel(name="kobo-libra-2", width=1264, height=1680, grey_levels=16)
+        This is why `ppi` is a field rather than a comment. At 300 ppi a pixel size chosen by eye
+        on a desktop monitor is about a quarter of what it looks like, and text sized that way is
+        unreadable on the device it was meant for.
+        """
+        return round(points / 72 * self.ppi)
+
+
+# 7 inch Carta 1200, 1264x1680 at 300 ppi, which works out at 107 x 142 mm of usable glass.
+KOBO_LIBRA_2 = Panel(name="kobo-libra-2", width=1264, height=1680, grey_levels=16, ppi=300)
 
 PANELS = {p.name: p for p in (KOBO_LIBRA_2,)}
 

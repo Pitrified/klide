@@ -17,12 +17,18 @@ from PIL import Image, ImageDraw, ImageFont
 from klide.frame import Frame
 from klide.panel import Panel
 
-MARGIN = 24
-FONT_SIZE = 26
-LINE_HEIGHT = 34
+# Sizes are in typographic points, not pixels, because the panel is 300 ppi and a pixel size
+# picked while looking at a desktop monitor comes out about a quarter of its apparent size on the
+# device. The first version of this file used 26px, which is 6.2pt: roughly half the smallest size
+# anyone sets a paperback in. The point of an e-reader is not straining to read it.
+BODY_POINTS = 11.0
+LINE_SPACING = 1.45
+MARGIN_POINTS = 11.5
 
 
-def render_text(text: str, panel: Panel, height: int | None = None) -> Frame:
+def render_text(
+    text: str, panel: Panel, height: int | None = None, points: float | None = None
+) -> Frame:
     """Draw `text` one line per line, clipped at the bottom.
 
     `height` defaults to the panel's own, which is the ordinary full-screen frame. Passing a larger
@@ -30,17 +36,25 @@ def render_text(text: str, panel: Panel, height: int | None = None) -> Frame:
     round trip. That is the taller page buffer from the UI notes, and the renderer's only part in
     it is agreeing to draw past the bottom of the panel.
 
+    `points` overrides the body size. The UI notes want discrete text-size steps rather than a
+    smooth zoom, since the panel cannot track a pinch continuously, so the size is a parameter the
+    host re-renders at rather than something the device scales.
+
     Lines that run past the right edge are not wrapped. Wrapping is a layout question and layout is
     phase 4; clipping keeps this honest about doing nothing clever.
     """
     canvas_height = panel.height if height is None else height
+    font_px = panel.points_to_pixels(BODY_POINTS if points is None else points)
+    line_height = round(font_px * LINE_SPACING)
+    margin = panel.points_to_pixels(MARGIN_POINTS)
+
     image = Image.new("L", (panel.width, canvas_height), color=255)
     draw = ImageDraw.Draw(image)
-    font = ImageFont.load_default(size=FONT_SIZE)
-    y = MARGIN
+    font = ImageFont.load_default(size=font_px)
+    y = margin
     for line in text.splitlines():
-        if y + LINE_HEIGHT > canvas_height - MARGIN:
+        if y + line_height > canvas_height - margin:
             break
-        draw.text((MARGIN, y), line, font=font, fill=0)
-        y += LINE_HEIGHT
+        draw.text((margin, y), line, font=font, fill=0)
+        y += line_height
     return Frame.from_image(image, panel)

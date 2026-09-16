@@ -37,18 +37,22 @@ ARTIFACTS = ROOT / "build" / "frames"
 # page is a constant rather than anything read from the machine it runs on.
 PAGE = """klide walking skeleton
 
-The host renders this page at the panel's own size and sends it over the wire
-as one frame. The simulator receives it, writes it out as an image, and the
-comparison checks it against the reference stored in the repo.
+The host renders this page at the
+panel's own size and sends it over
+the wire as one frame. The simulator
+receives it, writes it out as an
+image, and the comparison checks it
+against the reference in the repo.
 
-Nothing here is streamed, nothing is a dirty rectangle, and nothing is
-markdown. Those are phases 3 and 4. What this proves is that a frame can go
-from the host to the panel and be checked, which is the loop every later
-phase is verified by.
+Nothing here is streamed, nothing is
+a dirty rectangle, and nothing is
+markdown. Those are phases 3 and 4.
 
-    panel   kobo-libra-2, 1264x1680
-    depth   4 bits per pixel, 16 grey levels
-    wire    KLD1, an 18 byte header and packed rows
+    panel  kobo-libra-2
+           1264x1680 at 300 ppi
+    depth  4 bits, 16 grey levels
+    text   11 pt, 23 lines a screen
+    wire   KLD2, 9 byte header
 """
 
 

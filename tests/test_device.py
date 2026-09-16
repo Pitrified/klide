@@ -8,7 +8,7 @@ from klide.panel import Panel
 from klide.render import render_text
 from klide.waveform import Waveform
 
-PANEL = Panel(name="test", width=8, height=4, grey_levels=16)
+PANEL = Panel(name="test", width=8, height=4, grey_levels=16, ppi=300)
 WHITE = 15
 
 
@@ -129,7 +129,7 @@ def test_sleep_keeps_the_framebuffer_and_resume_repaints_with_a_flash() -> None:
 def test_disconnecting_keeps_the_page_and_draws_a_banner() -> None:
     # K6: a stale frame with a visible warning beats a blank screen, and the client draws the
     # warning itself because the host is by definition gone.
-    panel = Panel(name="wide", width=400, height=200, grey_levels=16)
+    panel = Panel(name="wide", width=400, height=200, grey_levels=16, ppi=300)
     device = Device(panel=panel)
     device.receive(render_text("kept text", panel), Waveform.GL16, page_id=1)
     before = device.snapshot().levels

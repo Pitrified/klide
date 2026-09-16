@@ -4,7 +4,7 @@ from PIL import Image
 from klide.frame import Frame, FrameDepthError, FrameSizeError
 from klide.panel import KOBO_LIBRA_2, Panel
 
-TINY = Panel(name="tiny", width=4, height=2, grey_levels=16)
+TINY = Panel(name="tiny", width=4, height=2, grey_levels=16, ppi=300)
 
 
 def a_frame(levels: bytes, panel: Panel = TINY) -> Frame:
@@ -27,7 +27,7 @@ def test_packing_puts_the_first_pixel_in_the_high_nibble() -> None:
 
 
 def test_odd_width_pads_each_row_to_a_whole_byte() -> None:
-    panel = Panel(name="odd", width=3, height=2, grey_levels=16)
+    panel = Panel(name="odd", width=3, height=2, grey_levels=16, ppi=300)
     frame = a_frame(bytes([1, 2, 3, 4, 5, 6]), panel)
     assert frame.row_bytes == 2
     assert frame.packed() == bytes([0x12, 0x30, 0x45, 0x60])
@@ -40,7 +40,7 @@ def test_packing_roundtrips() -> None:
 
 
 def test_odd_width_roundtrips_without_the_padding_leaking_in() -> None:
-    panel = Panel(name="odd", width=3, height=2, grey_levels=16)
+    panel = Panel(name="odd", width=3, height=2, grey_levels=16, ppi=300)
     frame = a_frame(bytes([1, 2, 3, 4, 5, 6]), panel)
     back = Frame.unpacked(frame.packed(), panel, 0, 0, panel.width, panel.height)
     assert back.levels == frame.levels
