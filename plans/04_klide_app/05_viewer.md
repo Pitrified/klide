@@ -147,11 +147,25 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
   repo tests the standalone decoder against `klide`'s encoder, which makes the copy a conformance
   check rather than code waiting to drift. Two implementations held to one contract is the point, not
   the cost.
-- V2: Whether the viewer shows the panel's claimed refresh behaviour, or ignores it. Showing it
-  means a redraw takes the hundreds of milliseconds the simulator claims, which is what makes a
-  design that redraws too often feel as bad as it would on the device. MD10 argues for showing it.
-  The counter-argument is that a person testing layout does not want to wait. Recommended: show it,
-  with a switch to turn it off, and record which one gets used.
+- ~~V2: Whether the viewer shows the panel's claimed refresh behaviour, or ignores it.~~
+  ANSWERED 2026-09-16: both, as a toggle that works while the viewer is running rather than a flag
+  chosen at startup. The two settings have different jobs and both are permanent. Honest mode makes a
+  redraw take the hundreds of milliseconds the simulator claims, which is what makes a design that
+  redraws too often feel as bad as it would on the device, and is why anyone would trust what they
+  saw. Fast mode ignores the claim, for clicking between views when the question is layout rather
+  than feel.
+  Honest is the default. The viewer exists because every other check here is self-referential (AD9),
+  and a viewer that showed an impossibly quick device, without saying it was doing so, would be one
+  more agreeable mirror.
+  Fast is the deliberate opt-out, not the starting point.
+  This replaces an earlier recommendation to record which setting got used. That was premised on one
+  of them turning out to be the right answer and the other being a concession; if both have standing
+  jobs there is nothing to find out.
+  How the delay is known: the frame message already carries the refresh mode, so the viewer maps that
+  byte to a duration with a four-entry table of its own. That table is a second copy of the numbers in
+  `waveform.FBINK_CLAIMS`, so the conformance test that pins the viewer's decoder to `klide`'s encoder
+  covers it as well. Putting a duration on the wire was the alternative and was rejected: a real panel
+  takes the time it takes, so the field would be baggage that only the simulator ever reads.
 
 ## Done when
 
