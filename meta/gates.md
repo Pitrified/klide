@@ -29,6 +29,7 @@ markdown and spelling tools; that constraint kept the gates small, which is not 
 | types | anything mypy's strict mode rejects | by changing one annotation from `str` to `int`, which it traced to three call sites |
 | test | a unit test failing | by changing an expected panel dimension |
 | frames | a rendered frame differing from its reference, anywhere, by any amount | by moving the render margin one pixel, which it located at x=26 y=31 |
+| session | a screen or a refresh cost differing from its reference across nine scripted steps | three ways: a one-screen pan error, shrinking the page cache, and a redraw policy change that moves no pixels |
 
 House style runs the [deslopify](../.claude/skills/deslopify/) scanner restricted to its `house_rules` category.
 The other categories stay advisory and are run by hand, because they need triage: a list of three real things
@@ -64,6 +65,21 @@ On failure it writes `build/frames/<name>.diff.png`, the rendered frame with eve
 in red, and says which file to look at and how to accept the change if it was intended. The
 reasoning behind the format, the storage and the tolerance is in
 [`../src/klide/compare.py`](../src/klide/compare.py), which is where A5 is answered.
+
+## The session gate
+
+Filled by app phase 3. `uv run klide-session` drives a nine-step scripted session against the
+simulator and compares the screen after every step, the same way the frame gate compares one.
+
+It also compares a refresh ledger, a text file recording what each step cost the panel. That
+exists because of a gap found by trying to break the gate: changing the client's refresh policy
+changes which waveform each update uses and how often the panel flashes, and in a simulator that
+does not model ghosting none of that moves a pixel. The image comparison passed a client whose
+flash rate had quadrupled. The ledger is compared exactly like a reference frame, so the redraw
+policy is gated rather than only printed.
+
+What the simulator claims, and which of those claims are documentation rather than measurement, is
+in [`../docs/simulator.md`](../docs/simulator.md).
 
 ## Enforcement point
 

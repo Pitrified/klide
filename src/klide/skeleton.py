@@ -56,7 +56,7 @@ def run_once(panel: Panel, socket_path: Path) -> Frame:
     """Render, serve and receive, returning what actually arrived at the simulator.
 
     The frame that gets compared is the received one rather than the rendered one. Comparing the
-    rendered frame would check the renderer and quietly skip the wire, which is most of what this
+    rendered frame would check the renderer and skip the wire entirely, which is most of what this
     phase exists to prove.
     """
     frame = render_text(PAGE, panel)

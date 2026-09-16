@@ -132,4 +132,8 @@ continuous feedback the panel cannot deliver.
 - K4: Which of the spectrum options for the first working version. Leaning 2, with 4 added if scrolling feels bad.
 - ~~K5: Does the device hold any state beyond the current frame.~~ Yes, a small bounded cache. See Preliminary feelings.
 - ~~K6: What happens on disconnect.~~ Keep showing the cache, overlay a marker.
-- K9: How the taller page buffer and the cache interact. One is for panning inside a view, the other for revisiting views, and they may or may not be the same thing.
+- ~~K9: How the taller page buffer and the cache interact. One is for panning inside a view, the other for revisiting views, and they may or may not be the same thing.~~
+  Answered by building it, app phase 3. They are the same thing. The device holds a bounded cache of pages keyed by an
+  id the host assigns, a page may be any height, and the taller page buffer is just the cache entry currently on screen.
+  Panning moves a window inside that entry and revisiting a view redisplays a different one; both are local and neither
+  needs a second structure. What this costs is a page id on the wire, which the protocol now carries.

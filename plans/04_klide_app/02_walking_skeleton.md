@@ -52,7 +52,7 @@ The protocol is written up in [`../../docs/protocol.md`](../../docs/protocol.md)
   Pillow ships a scalable font and `uv.lock` pins Pillow, so the same text renders to the same
   bytes here, in a worktree and on a runner with no fonts installed.
 - **The comparison is of the received frame, not the rendered one.** Comparing what the renderer
-  produced would check the renderer and quietly skip the wire, which is most of what this phase
+  produced would check the renderer and skip the wire entirely, which is most of what this phase
   exists to prove.
 - **The protocol's shape was decided by the client that does not exist yet.** KOReader's Lua has no
   `string.unpack`, so every header field is a whole number of bytes, big-endian, and each row of

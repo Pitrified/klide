@@ -30,6 +30,11 @@ run "test"        uv run --quiet pytest -q
 # reference committed under tests/references/.
 run "frames"      uv run --quiet klide-skeleton
 
+# The scripted session. Same idea as the frame gate, over nine steps of a driven
+# session rather than one static frame, so a change in the client logic fails here
+# and names the step it moved.
+run "session"     uv run --quiet klide-session
+
 echo
 if [[ ${#failed[@]} -eq 0 ]]; then
   echo "all gates passed"

@@ -1,0 +1,10 @@
+01-opened  gl16  from-host  450ms
+02-page-forward  gl16  local  450ms
+03-page-forward-again  gl16  local  450ms
+04-page-back  gl16  local  450ms
+05-switch-view  gl16  from-host  450ms
+06-back-to-cached  gl16  local  450ms
+07-asleep  no refresh
+08-resumed  gc16  local  450ms
+09-disconnected  du  local  260ms
+total  3410ms  refreshes 8

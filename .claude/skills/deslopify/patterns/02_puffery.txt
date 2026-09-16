@@ -42,3 +42,7 @@
 \bshed light on\b
 \bpave the way\b
 \ba (myriad|plethora) of\b
+\bload.bearing\b
+\bunleash(es|ed|ing)?\b
+\bquietly\b
+\bbites\b

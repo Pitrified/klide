@@ -22,18 +22,24 @@ FONT_SIZE = 26
 LINE_HEIGHT = 34
 
 
-def render_text(text: str, panel: Panel) -> Frame:
-    """Draw `text` as a full-panel frame, one line per line, clipped at the bottom.
+def render_text(text: str, panel: Panel, height: int | None = None) -> Frame:
+    """Draw `text` one line per line, clipped at the bottom.
 
-    Lines that run past the panel are not wrapped. Wrapping is a layout question and layout is
+    `height` defaults to the panel's own, which is the ordinary full-screen frame. Passing a larger
+    one renders a page taller than the screen, which the device holds and pans inside without a
+    round trip. That is the taller page buffer from the UI notes, and the renderer's only part in
+    it is agreeing to draw past the bottom of the panel.
+
+    Lines that run past the right edge are not wrapped. Wrapping is a layout question and layout is
     phase 4; clipping keeps this honest about doing nothing clever.
     """
-    image = Image.new("L", (panel.width, panel.height), color=255)
+    canvas_height = panel.height if height is None else height
+    image = Image.new("L", (panel.width, canvas_height), color=255)
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default(size=FONT_SIZE)
     y = MARGIN
     for line in text.splitlines():
-        if y + LINE_HEIGHT > panel.height - MARGIN:
+        if y + LINE_HEIGHT > canvas_height - MARGIN:
             break
         draw.text((MARGIN, y), line, font=font, fill=0)
         y += LINE_HEIGHT

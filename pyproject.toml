@@ -17,6 +17,7 @@ dev = [
 
 [project.scripts]
 klide-skeleton = "klide.skeleton:main"
+klide-session = "klide.session:main"
 
 [build-system]
 requires = ["hatchling"]
