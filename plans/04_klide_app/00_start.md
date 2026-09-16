@@ -106,12 +106,14 @@ Numbered `A` for this folder.
   b. **Tap.** Also easy, and already on the wire: a click at a point becomes `InputEvent.tap` with panel coordinates.
      The viewer would need to map its own scaled window back to panel coordinates, since it will not be shown at
      300 ppi on a desktop monitor.
-  c. **Swipe and drag, which is the actual question.** A mouse drag is continuous and the panel is not. The UI notes
-     already settle the principle for pinch: the panel cannot track fingers continuously, so anything gradual looks
-     like a slideshow of intermediate states, and the workable version is discrete steps or settling on release.
-     Drag is the same problem. Whether the simulator should imitate that badness faithfully, so a design that
-     assumes smooth dragging looks wrong in the simulator, is the part worth deciding deliberately rather than by
-     accident. MD10 argues it should: the simulator exists to make a bad design visible before hardware does.
+  c. ~~**Swipe and drag, which is the actual question.**~~ ANSWERED 2026-09-16, for now: settle on release, and
+     short one-directional drags. That is what a Kindle-like device already does and what a reader expects, so
+     there is no need to invent anything. Held provisionally, in the words it was given in: if long or free
+     dragging turns out to be wanted, this reopens.
+     Nothing had to be built for it. The wire already carries a discrete `Direction` rather than a continuous
+     delta, and `Device.pan` is called once per gesture rather than streamed a pixel at a time, so the model that
+     came out of phase 3 is the one this decision asks for. What it settles is that it stays that way deliberately
+     rather than by accident, and that a viewer must not offer smooth dragging the panel cannot deliver.
   d. **What an agent gets from it.** Probably nothing. The script is the agent's interface and it already covers
      every gesture. This is for a person, which makes it lower priority than anything the gates use.
   Which phase owns it is open. It is not phase 4, which is the host renderer and views, and it is not phase 5,
