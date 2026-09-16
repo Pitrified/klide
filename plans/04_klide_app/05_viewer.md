@@ -75,6 +75,18 @@ its own SSH port:
     ssh -f -N -L 9999:localhost:22 <host>
     nc -v localhost 9999          # an SSH- banner means forwarding works
                                   # "administratively prohibited" means it does not
+    pkill -f "ssh -f -N -L 9999"  # the -f forward stays in the background until killed
+
+`nc` appearing to hang after the banner is the probe succeeding, not failing. It has reached a real
+SSH server, which sends its banner and then waits for the client's; `nc` is not an SSH client and
+never sends one, so the server waits out its login grace period. The banner is the whole result.
+
+Run against the second host on 2026-09-16: forwarding is allowed there, and the banner read
+`SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.17`, which is Ubuntu 22.04. That matters for a reason beyond
+forwarding: 22.04 ships Python 3.10 and klide asks for 3.12 or newer. It is not a request for the
+administrator. `uv` installs its own interpreter under the user's home directory, which is already
+how this box runs klide: the system Python here is 3.14.4 and the venv uses a 3.13.14 that uv
+downloaded. So AD10 holds on that host too, with nothing to ask for.
 
 None of this matters where Tailscale reaches the host, which is the case to prefer.
 
