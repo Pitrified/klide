@@ -32,6 +32,19 @@ Context: [`00_start.md`](00_start.md). M1 is b, so this is a cherry-pick: read p
 - Portability to other harnesses (M3).
 - Anything requiring a running product to verify, which is phase 2 of the app track.
 
+## Waiting on a fresh session
+
+This session created the skills and has never been restarted, so it cannot see them. On the next one, in order:
+
+1. Check `principles` and `deslopify` appear in the skill list, and invoke one.
+2. Confirm the repo's instructions carry the Planning and mannered-writing paragraphs, which were also written here
+   and are therefore absent from this session's loaded copy.
+3. Run `scripts/check.sh` cold, before anything else, to see whether it says what a stranger needs.
+4. Then set this phase to done in both places, or record what was wrong.
+
+Worth treating as the first real test of the plan folder: a cold session should be able to read
+[`tracking.md`](tracking.md) and carry on without this conversation.
+
 ## Done when
 
 - The take, adapt, reject list exists with a reason per entry.
