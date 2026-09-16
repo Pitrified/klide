@@ -43,9 +43,21 @@ Empty until a stack exists (app phase 1). Each one is a line in `scripts/check.s
 
 ## Enforcement point
 
-CI and the local script, not a git hook. A hook is not shared by git, has to be installed on every checkout,
-and is bypassed with one flag, so it would give the appearance of enforcement without the fact of it.
-Nothing here is bypassable by an agent that does not run the script, which is what CI is for.
+All three: the local script, a pre-commit hook, and CI.
 
-Note the box these run on has no GitHub credentials, so the workflow file has never executed.
-The script it calls has been verified locally, failing and passing. The first push proves the rest.
+The hook was rejected at first, on the grounds that a hook is not shared by git, has to be installed per
+checkout, and is bypassed with one flag. That reasoning assumed CI would run. It does not: this box has no
+GitHub credentials, nothing is pushed from here, and the workflow has never executed once. A hook that can be
+bypassed beats a check that never fires, so the decision was reopened and reversed.
+
+```bash
+scripts/install-hooks.sh     # once per clone: git config core.hooksPath .githooks
+```
+
+`core.hooksPath` is what answers the "not shared by git" objection: [`.githooks/`](../.githooks/) is versioned
+like anything else, and the install is one command rather than a copy into `.git/hooks`.
+The hook runs `scripts/check.sh`, around a second on this repo, and blocks the commit when a gate fails.
+`--no-verify` still bypasses it, deliberately, and CI is the backstop that catches the bypass once pushing works.
+
+Verified both directions: a commit carrying an em dash is refused and no commit object is written,
+and a clean tree commits normally.

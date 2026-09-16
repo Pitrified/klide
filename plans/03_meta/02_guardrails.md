@@ -51,5 +51,9 @@ Context: [`00_start.md`](00_start.md).
   faked; `.vscode/settings.json` still holds the word list for the editor.
 - Commit message shape is dropped too. The rule is a preference with no failing case anyone has hit, and a gate
   without a real failure is decoration.
+- The enforcement decision was reversed a day after it was made. CI was chosen over a pre-commit hook because a
+  hook is bypassable, which assumed CI would run. It cannot: no GitHub credentials on this box, nothing pushed,
+  the workflow has never executed. A bypassable check beats one that never fires, so the hook went in, shared
+  through `core.hooksPath` rather than copied into `.git/hooks`.
 - Only the `house_rules` category of the writing scan is gated. The rest need triage, and a gate that needs
   judgement teaches people to ignore gates.

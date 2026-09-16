@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs every gate before a commit is written. Around a second, docs-only repo.
+#
+# It checks the working tree, not the staged snapshot, so with a partial stage
+# it can block on a change you did not stage, or pass a staged version that
+# differs from the file on disk. Stashing to fix that costs more than it buys
+# in a docs repo; revisit if partial staging becomes a habit here.
+#
+# Bypass with --no-verify. CI runs the same script, so a bypass shows up there.
+exec "$(git rev-parse --show-toplevel)/scripts/check.sh"
