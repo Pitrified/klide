@@ -35,6 +35,11 @@ run "frames"      uv run --quiet klide-skeleton
 # and names the step it moved.
 run "session"     uv run --quiet klide-session
 
+# The view gate. Six views rendered from fixtures under tests/fixtures, never from
+# live git state or a real transcript, both of which would render a different page
+# every run.
+run "views"       uv run --quiet klide-views
+
 echo
 if [[ ${#failed[@]} -eq 0 ]]; then
   echo "all gates passed"

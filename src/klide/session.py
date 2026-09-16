@@ -34,24 +34,19 @@ PAGE_SCREENS = 3
 CONVERSATION_ID = 1
 DIFF_ID = 2
 
-# Hand-wrapped to fit the panel at the body text size, because the renderer does not wrap yet.
-# Wrapping is layout and layout is phase 4; until then, text that runs past the right edge is
-# clipped silently, which a test guards against.
+# No longer hand-wrapped: phase 4 gave the renderer real wrapping, so the panel decides where
+# these lines break rather than whoever typed them.
 INTROS = {
     CONVERSATION_ID: (
         "conversation",
-        "A page taller than the screen. The\n"
-        "device holds all of it and shows one\n"
-        "screen at a time, so a page turn is\n"
-        "answered on the device rather than by\n"
-        "asking the host for another picture.",
+        "A page taller than the screen. The device holds all of it and shows one screen "
+        "at a time, so a page turn is answered on the device rather than by asking the "
+        "host for another picture.",
     ),
     DIFF_ID: (
         "changed files",
-        "The second view, sent because the\n"
-        "device forwarded a swipe. This one\n"
-        "arrives over the wire, which is the\n"
-        "round trip a local answer avoids.",
+        "The second view, sent because the device forwarded a swipe. This one arrives "
+        "over the wire, which is the round trip a local answer avoids.",
     ),
 }
 

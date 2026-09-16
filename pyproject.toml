@@ -13,11 +13,14 @@ dev = [
     "mypy>=1.14",
     "pytest>=8",
     "ruff>=0.14",
+    "types-pygments>=2.21.0.20260819",
 ]
 
 [project.scripts]
 klide-skeleton = "klide.skeleton:main"
 klide-session = "klide.session:main"
+klide-views = "klide.viewcmd:main"
+klide-live = "klide.live:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -30,6 +30,7 @@ markdown and spelling tools; that constraint kept the gates small, which is not 
 | test | a unit test failing | by changing an expected panel dimension |
 | frames | a rendered frame differing from its reference, anywhere, by any amount | by moving the render margin one pixel, which it located at x=26 y=31 |
 | session | a screen or a refresh cost differing from its reference across nine scripted steps | three ways: a one-screen pan error, shrinking the page cache, and a redraw policy change that moves no pixels |
+| views | any of the six views laying out differently, in content or in page height | by merging the repeated speaker labels in the conversation view, which it located at x=78 y=1999 |
 
 House style runs the [deslopify](../.claude/skills/deslopify/) scanner restricted to its `house_rules` category.
 The other categories stay advisory and are run by hand, because they need triage: a list of three real things
@@ -80,6 +81,23 @@ policy is gated rather than only printed.
 
 What the simulator claims, and which of those claims are documentation rather than measurement, is
 in [`../docs/simulator.md`](../docs/simulator.md).
+
+## The views gate
+
+Filled by app phase 4. `uv run klide-views` lays out all six views and compares each rendered page
+against its reference.
+
+Everything it renders comes from `tests/fixtures`, never from the machine it runs on. A view fed
+from live git state or a real transcript would compare a different page on every run, which is the
+one thing a reference cannot survive. The fixture transcript is synthetic for a second reason: the
+real ones on this box hold actual sessions, which are not ours to commit.
+
+It checks page height before pixels. A view that grew a screen is a different page, not a different
+picture of the same one, and saying so is more useful than a pixel count.
+
+The command that watches a real session, `uv run klide-live`, is deliberately not a gate. What it
+shows depends on whatever session it is watching, so it has no reference; the deterministic checks
+over the same code are this gate and the streaming tests.
 
 ## Enforcement point
 

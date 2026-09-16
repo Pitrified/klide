@@ -26,7 +26,7 @@ from klide.compare import (
 from klide.frame import Frame
 from klide.host import serve_once
 from klide.panel import KOBO_LIBRA_2, Panel
-from klide.render import render_text
+from klide.render import Metrics, render_lines
 from klide.simulator import display, receive_once
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,23 +37,34 @@ ARTIFACTS = ROOT / "build" / "frames"
 # page is a constant rather than anything read from the machine it runs on.
 PAGE = """klide walking skeleton
 
-The host renders this page at the
-panel's own size and sends it over
-the wire as one frame. The simulator
-receives it, writes it out as an
-image, and the comparison checks it
-against the reference in the repo.
+The host renders this page at the panel's own size and sends it over the wire as one
+frame. The simulator receives it, writes it out as an image, and the comparison checks
+it against the reference stored in the repo.
 
-Nothing here is streamed, nothing is
-a dirty rectangle, and nothing is
-markdown. Those are phases 3 and 4.
-
-    panel  kobo-libra-2
-           1264x1680 at 300 ppi
-    depth  4 bits, 16 grey levels
-    text   11 pt, 23 lines a screen
-    wire   KLD2, 9 byte header
+Nothing here is streamed, nothing is a dirty rectangle, and nothing is markdown. Those
+are phases 3 and 4. What this proves is that a frame can go from the host to the panel
+and be checked, which is the loop every later phase is verified by.
 """
+
+#: Kept out of PAGE because its columns only line up in a monospace face that is not reflowed.
+FACTS = """panel  kobo-libra-2, 1264x1680 at 300 ppi
+depth  4 bits per pixel, 16 grey levels
+text   11 pt body, reflowed to the column
+wire   KLD2, a 9 byte header and packed rows"""
+
+
+def render_skeleton_page(panel: Panel) -> Frame:
+    """The skeleton's page: prose reflowed to the column, the fact table left alone.
+
+    Two styles rather than one, because the table's columns only line up in a monospace face that
+    is not reflowed, and the prose only reads well if it is.
+    """
+    metrics = Metrics.for_panel(panel)
+    column = metrics.column()
+    column.paragraphs(PAGE, metrics.body())
+    column.blank(metrics.body())
+    column.add(FACTS, metrics.mono())
+    return render_lines(column.lines, panel, metrics)
 
 
 def run_once(panel: Panel, socket_path: Path) -> Frame:
@@ -63,7 +74,7 @@ def run_once(panel: Panel, socket_path: Path) -> Frame:
     rendered frame would check the renderer and skip the wire entirely, which is most of what this
     phase exists to prove.
     """
-    frame = render_text(PAGE, panel)
+    frame = render_skeleton_page(panel)
     with ThreadPoolExecutor(max_workers=1) as pool:
         serving = pool.submit(serve_once, frame, socket_path)
         received = receive_once(socket_path, panel)
