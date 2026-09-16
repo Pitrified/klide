@@ -225,7 +225,7 @@ Recorded so they are not lost. Each has a phase that will force it.
 
 ## Unknowns to resolve by experiment
 
-Not open questions for the user; these are measurements, and [`02_display_spike.md`](02_display_spike.md) exists to take them.
+Not open questions for the user; these are measurements, and [`../01_implementation/02_display_spike.md`](../01_implementation/02_display_spike.md) exists to take them.
 
 * Does FBInk fully support the PW5 panel. The PW5 is MediaTek MT8113, not the i.MX in older Kindles, and waveform and refresh-mode handling differ. Most published prior art is on i.MX devices.
 * Latency of a small partial refresh, and how many partial updates before ghosting forces a full one.

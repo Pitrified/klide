@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Mechanical scan for AI writing tells. Reports findings; it does not edit.
 # Usage: deslop-scan.sh [--quiet] FILE...
-#   --quiet  counts only, no matched lines
+#   --quiet         counts only, no matched lines
+#   --only A,B      restrict to these categories (pattern file names without the number)
 # Exit: 0 clean, 1 findings, 2 usage error.
 set -uo pipefail
 
@@ -9,10 +10,12 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PATTERN_DIR="$SKILL_DIR/patterns"
 QUIET=0
 MAX_SHOWN=8
+ONLY=""
 
 while [[ ${1-} == --* ]]; do
   case "$1" in
     --quiet) QUIET=1; shift ;;
+    --only) ONLY="${2-}"; shift 2 ;;   # comma-separated category names
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -41,6 +44,7 @@ for file in "$@"; do
 
   for patterns in "$PATTERN_DIR"/*.txt; do
     category="$(basename "$patterns" .txt)"; category="${category#[0-9][0-9]_}"
+    if [[ -n $ONLY && ",$ONLY," != *",$category,"* ]]; then continue; fi
     hits="$(printf '%s\n' "$body" | grep -Ein -f "$patterns" || true)"
     [[ -z $hits ]] && continue
     n=$(printf '%s\n' "$hits" | wc -l)
@@ -66,7 +70,7 @@ for file in "$@"; do
            (NF - prev <= 4 && prev - NF <= 4) {run++; if (run > worst) worst = run; prev = NF; next}
            {run = 1; prev = NF}
            END {print worst+0}')"
-  if [[ ${cadence:-0} -ge 4 ]]; then
+  if [[ -z $ONLY || ",$ONLY," == *",cadence,"* ]] && [[ ${cadence:-0} -ge 4 ]]; then
     file_total=$((file_total + 1))
     report+="  cadence: $cadence consecutive sentences of near-identical length"$'\n'
   fi

@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 ---
 
 # Phase 2 - Guardrails
@@ -19,9 +19,11 @@ Context: [`00_start.md`](00_start.md).
 ## Plan
 
 - Write the gate contract: every gate runs locally with one command, runs in CI on the same command, fails with
-  an actionable message, and is fast enough that an agent will actually run it.
-- Stack-independent now: markdown and link checking on the plan folders, spellcheck against the existing
-  `cSpell.words`, commit message shape, and a CI workflow that runs them.
+  an actionable message, is fast enough that an agent will actually run it, and has been seen to fail.
+  Written as [`../../meta/gates.md`](../../meta/gates.md).
+- Stack-independent now: relative link resolution, agreement between each phase's frontmatter and its tracking
+  table, the writing rules the repo bans outright, and a CI workflow that runs them.
+  Spellcheck and commit message shape were dropped, see below.
 - Define the slots the app track fills when the stack lands: format, lint, type check, unit test, and the
   performance or frame-comparison gate that M7 points at.
 - Decide the enforcement point. A pre-commit hook, CI only, or both, and what an agent is allowed to bypass.
@@ -39,3 +41,15 @@ Context: [`00_start.md`](00_start.md).
 - The list of empty slots exists, with what each will check.
 
 ## What the implementation found
+
+- The links gate found a real broken link on its first run, in `00_initial/00_start.md`, pointing at a phase file
+  that had moved to another folder months of edits ago. The gate paid for itself before it was finished.
+- The links gate itself was broken in a way only a failing case could show. It crashed instead of reporting when
+  given relative paths, because the crash lived in the code that formats a finding, and a passing run never
+  reaches that code. This is the argument for rule 5 of the contract, and it was found by following it.
+- No node on this box, so cspell and the markdown linters are unavailable. Spellcheck is dropped rather than
+  faked; `.vscode/settings.json` still holds the word list for the editor.
+- Commit message shape is dropped too. The rule is a preference with no failing case anyone has hit, and a gate
+  without a real failure is decoration.
+- Only the `house_rules` category of the writing scan is gated. The rest need triage, and a gate that needs
+  judgement teaches people to ignore gates.
