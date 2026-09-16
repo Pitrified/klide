@@ -1,11 +1,20 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """klide viewer: a window onto the simulator, running wherever you have a screen.
 
-Copy this one file to the machine with the display and run it. It needs Python 3 and tkinter
-(`apt install python3-tk` on Debian and Ubuntu) and nothing else: no klide, no Pillow, no pip.
+Copy this one file to the machine with the display and run it. Nothing to install: the block above
+is PEP 723 inline script metadata, so `uv run` builds the environment itself, and uv's own CPython
+ships tkinter, which the system one on Debian and Ubuntu splits into a separate package.
 
-    python3 klide_viewer.py --host 100.126.229.25          # over Tailscale, direct
-    python3 klide_viewer.py --host localhost --port 5000   # through ssh -L
+    uv run klide_viewer.py --host 100.126.229.25          # over Tailscale, direct
+    uv run klide_viewer.py --host localhost --port 5000   # through ssh -L
+    ./klide_viewer.py --host ...                          # the shebang runs uv for you
+
+`dependencies` is empty and should stay that way. The standard library and tkinter are the whole
+budget: this file has to be runnable by copying it to whatever machine currently has a screen.
 
 Why it is a separate file rather than part of klide, and why it duplicates the protocol:
 
@@ -379,7 +388,19 @@ def main(argv: list[str] | None = None) -> int:
         print("viewer: is the klide host running, and is the port forwarded?", file=sys.stderr)
         return 1
     print(f"viewer: connected to {args.host}:{args.port}")
-    Viewer(sock, args.width, args.height, args.ppi).run()
+    try:
+        viewer = Viewer(sock, args.width, args.height, args.ppi)
+    except tk.TclError as no_screen:
+        # The likeliest way to run this wrong is on the host by mistake, or in a shell with no
+        # display forwarded. A traceback here says nothing about which.
+        print(f"viewer: cannot open a window: {no_screen}", file=sys.stderr)
+        print(
+            "viewer: this has to run on the machine with the screen, not on the host.",
+            file=sys.stderr,
+        )
+        print("viewer: under WSL, check that `echo $DISPLAY` prints something.", file=sys.stderr)
+        return 1
+    viewer.run()
     return 0
 
 

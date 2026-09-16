@@ -70,10 +70,45 @@ def test_the_viewer_imports_nothing_from_klide() -> None:
 
 
 def test_the_viewer_needs_no_third_party_package() -> None:
-    # One apt install of python3-tk on whatever PC is current, and nothing else.
+    # Copying the file to whatever machine currently has a screen has to be the whole install.
     source = VIEWER_PATH.read_text()
     for forbidden in ("import PIL", "from PIL", "import numpy", "import pygments"):
         assert forbidden not in source
+
+
+def _script_metadata() -> dict[str, Any]:
+    """The PEP 723 block, parsed the way the specification says to read it."""
+    import re
+    import tomllib
+
+    pattern = r"(?m)^# /// (?P<type>[a-zA-Z0-9-]+)$\s(?P<content>(^#(| .*)$\s)+)^# ///$"
+    for match in re.finditer(pattern, VIEWER_PATH.read_text()):
+        if match.group("type") != "script":
+            continue
+        content = "".join(
+            line[2:] if line.startswith("# ") else line[1:]
+            for line in match.group("content").splitlines(keepends=True)
+        )
+        return tomllib.loads(content)
+    raise AssertionError("no PEP 723 script block in the viewer")
+
+
+def test_the_viewer_declares_its_own_environment() -> None:
+    # PEP 723 inline metadata is what lets `uv run klide_viewer.py` work on a machine with nothing
+    # set up: uv reads the block, builds the environment, and its own CPython ships tkinter, which
+    # Debian and Ubuntu split out of the system Python into a separate package.
+    assert "requires-python" in _script_metadata()
+
+
+def test_the_viewer_declares_no_dependencies_and_should_not_gain_any() -> None:
+    # The moment this list is non-empty the file stops being copyable to a machine with no network
+    # or no patience, and starts being an install. The standard library and tkinter are the budget.
+    assert _script_metadata()["dependencies"] == []
+
+
+def test_the_shebang_runs_it_without_a_python_being_chosen_first() -> None:
+    first_line = VIEWER_PATH.read_text().splitlines()[0]
+    assert first_line == "#!/usr/bin/env -S uv run --script"
 
 
 # The constants it copied

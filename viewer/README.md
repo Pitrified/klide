@@ -23,12 +23,19 @@ Duplication is only acceptable if divergence fails a gate, so
 and pins its constants, its refresh table and its input codes to klide's. If the two drift, the
 `test` gate fails.
 
-## Setup, once per machine
+## Setup
 
-    sudo apt install python3-tk        # Debian, Ubuntu, and WSL distros
+None, beyond having [uv](https://docs.astral.sh/uv/). The file carries
+[PEP 723](https://peps.python.org/pep-0723/) inline script metadata, so `uv run` reads the block at
+the top, builds the environment and runs it.
 
-Nothing else. Under WSL2 with WSLg the window opens as an ordinary Windows window; check that
-`echo $DISPLAY` prints something first.
+That also removes the one install this used to need. tkinter is in the standard library but Debian
+and Ubuntu split the `_tkinter` extension into a `python3-tk` package, so the system Python cannot
+import it until someone installs that. uv's own CPython ships it, which is checked rather than
+assumed: on this box the system Python fails to import tkinter and uv's does.
+
+Under WSL2 with WSLg the window opens as an ordinary Windows window. `echo $DISPLAY` printing
+something is the sign that part is working.
 
 ## Running it
 
@@ -38,13 +45,16 @@ On the host, start a session and wait for a viewer:
 
 Then, on the machine with the screen:
 
-    python3 klide_viewer.py --host <the host> --port 5000
+    uv run klide_viewer.py --host <the host> --port 5000
 
 If the host is on your tailnet, use its tailnet address and nothing else is needed. If it is only
 reachable by SSH, forward the port first:
 
     ssh -f -N -L 5000:localhost:5000 <the host>
-    python3 klide_viewer.py --host localhost --port 5000
+    uv run klide_viewer.py --host localhost --port 5000
+
+The shebang is `#!/usr/bin/env -S uv run --script`, so `./klide_viewer.py --host ...` works too once
+the file is executable, without naming a Python at all.
 
 To check whether a host allows forwarding at all, without root on it, see the probe in
 [the phase plan](../plans/04_klide_app/05_viewer.md).
