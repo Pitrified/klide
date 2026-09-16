@@ -4,6 +4,7 @@
 Absolute URLs and anchors are ignored: this checks the links that rot silently
 when a file is renamed, which is the failure the plan folders actually hit.
 """
+
 import re
 import sys
 from pathlib import Path

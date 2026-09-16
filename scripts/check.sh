@@ -18,6 +18,13 @@ run "links"       python3 scripts/gates/links.py "${MD[@]}"
 run "plan status" python3 scripts/gates/plan_status.py
 run "house style" .claude/skills/deslopify/scripts/deslop-scan.sh --only house_rules --quiet "${MD[@]}"
 
+# Python gates. `uv run` syncs the locked environment first, so these need no
+# setup beyond uv itself and they run the same versions everywhere.
+run "format"      uv run --quiet ruff format --check .
+run "lint"        uv run --quiet ruff check .
+run "types"       uv run --quiet mypy
+run "test"        uv run --quiet pytest -q
+
 echo
 if [[ ${#failed[@]} -eq 0 ]]; then
   echo "all gates passed"

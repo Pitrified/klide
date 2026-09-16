@@ -1,0 +1,37 @@
+[project]
+name = "klide"
+version = "0.0.0"
+description = "Watch a Claude Code session, render frames, push them to an e-ink client"
+requires-python = ">=3.12"
+dependencies = [
+    "pillow>=11",
+    "pygments>=2.19",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14",
+    "pytest>=8",
+    "ruff>=0.14",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# Start narrow and widen as the code earns it: pyflakes, pycodestyle, isort,
+# bugbear, comprehensions, pyupgrade.
+select = ["F", "E", "W", "I", "B", "C4", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -24,22 +24,34 @@ markdown and spelling tools; that constraint kept the gates small, which is not 
 | links | a relative markdown link whose target does not exist | found a real one on its first run, `00_start.md` pointing at a phase file that had moved folders |
 | plan status | a phase whose frontmatter disagrees with its tracking table, a table row naming a file that does not exist, a phase file missing from the table | all three, by breaking each one deliberately |
 | house style | what the writing rules ban outright, em dashes first | by adding one to `README.md` |
+| format | Python formatting drift | by appending a badly spaced statement to a module |
+| lint | unused imports, unsorted imports, the bugbear set | found a real unused `import sys` in `scripts/gates/plan_status.py` on its first run |
+| types | anything mypy's strict mode rejects | by changing one annotation from `str` to `int`, which it traced to three call sites |
+| test | a unit test failing | by changing an expected panel dimension |
 
 House style runs the [deslopify](../.claude/skills/deslopify/) scanner restricted to its `house_rules` category.
 The other categories stay advisory and are run by hand, because they need triage: a list of three real things
 trips the same pattern as a rhetorical triplet, and a gate that needs judgement is a gate people learn to ignore.
 
-## Slots the app track fills
+## The Python gates
 
-Empty until a stack exists (app phase 1). Each one is a line in `scripts/check.sh` when it lands.
+Filled by app phase 1, which chose the stack. See [stack](../docs/stack.md) for why it is Python
+and why these four tools.
+
+They run through `uv run`, which syncs the locked environment before each one, so they need no
+setup beyond uv and they run the same versions in a worktree as here. `uv.lock` is committed for
+that reason. They take most of the script's runtime now, and it is still short enough to sit in a
+pre-commit hook.
+
+## The slot still open
 
 | slot | what it will check |
 | --- | --- |
-| format | the formatter for the chosen language, in check mode |
-| lint | the linter, at whatever strictness survives the first week |
-| types | the type checker, if the language has one worth running |
-| test | the unit suite |
 | frames | a rendered frame against its reference, which is the gate MD10 is about and the only one specific to this project |
+
+This one cannot be filled yet. A5 leaves the evidence format, the reference storage and the match
+tolerance to app phase 2, on the grounds that the first real frame comparison shows what the
+answer has to be. Writing the gate before that would be guessing at all three.
 
 ## Enforcement point
 
@@ -58,6 +70,10 @@ scripts/install-hooks.sh     # once per clone: git config core.hooksPath .githoo
 like anything else, and the install is one command rather than a copy into `.git/hooks`.
 The hook runs `scripts/check.sh`, around a second on this repo, and blocks the commit when a gate fails.
 `--no-verify` still bypasses it, deliberately, and CI is the backstop that catches the bypass once pushing works.
+
+The workflow gained a `setup-uv` step when the Python gates landed, because the runner image does
+not carry uv. That step is unverified: this box has no GitHub credentials, nothing has been pushed,
+and the workflow has still never executed. It is written from the action's documentation.
 
 Verified both directions: a commit carrying an em dash is refused and no commit object is written,
 and a clean tree commits normally.

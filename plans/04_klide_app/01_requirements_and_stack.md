@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 ---
 
 # Phase 1 - Requirements and stack
@@ -44,3 +44,28 @@ Context: [`00_start.md`](00_start.md).
 - The gates run on an empty project and fail on a deliberately broken commit.
 
 ## What the implementation found
+
+The requirement list, the candidate table and the decision are in [`../../docs/stack.md`](../../docs/stack.md).
+Python, for the host, the renderer and the simulator, all three in one language.
+
+- **The phase's real question was whether D10 survives.** D10 already said Python, taken in
+  conversation before any requirement was written, which is the habit MD3 exists to stop. Writing
+  the requirements first and then scoring against them is the check, and D10 passes it.
+- **R5 is why the answer is not Rust.** D1 leaves no klide rendering code on the device, so nothing
+  in this track ever cross-compiles. That voids the usual argument for a compiled language, and
+  what remains is a compiler's correctness guarantee against an edit-compile-run loop paid on every
+  unattended agent attempt (R7).
+- **One thing was measured rather than argued.** Rendering a full 1264x1680 page of highlighted
+  text costs tens of milliseconds and a paragraph-sized dirty rectangle costs single digits,
+  against a panel that answers a partial refresh in hundreds. `Image.quantize` turned out to cost
+  more than the rendering, which is avoidable because the renderer picks its own grey levels; that
+  is a note for phase 2's wire format, not a finding about the language.
+- **Four of the five gate slots are filled**, with ruff for format and lint, mypy in strict mode,
+  and pytest. Each was demonstrated failing, and the lint gate found a real unused import in
+  `scripts/gates/plan_status.py` the first time it ran, which is the second time a new gate has
+  caught something in the gates themselves.
+- **The frames gate stays open.** A5 gives the evidence format to phase 2, so writing the
+  comparison now would mean guessing the reference storage and the match tolerance as well.
+- **The scaffold is deliberately small.** One module holding the panel geometry the device notes
+  recorded, because both the renderer and the simulator need it and it is the smallest thing that
+  is real rather than a placeholder. Phase 2 is the walking skeleton.

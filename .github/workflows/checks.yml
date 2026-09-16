@@ -9,5 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The Python gates shell out to uv, which the runner image does not carry.
+      # This is setup, not a second check: the run step is still the one script.
+      - uses: astral-sh/setup-uv@v5
       - name: Run every gate
         run: scripts/check.sh

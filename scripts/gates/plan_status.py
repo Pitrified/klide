@@ -5,8 +5,8 @@ The two drift whenever a phase is opened or closed in one place and not the
 other, and a plan folder that lies about where the work stands is worse than
 no plan folder. Checks every plans/*/tracking.md against its sibling files.
 """
+
 import re
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -47,15 +47,13 @@ def main() -> int:
                 findings.append(f"{phase.relative_to(ROOT)}: no status in frontmatter")
             elif own != table_status:
                 findings.append(
-                    f"{where}: table says {table_status!r}, "
-                    f"{phase.relative_to(ROOT)} says {own!r}"
+                    f"{where}: table says {table_status!r}, {phase.relative_to(ROOT)} says {own!r}"
                 )
         for phase in sorted(tracking.parent.glob("[0-9][0-9]_*.md")):
             if phase.name.startswith("00_") or phase.name in listed:
                 continue
             findings.append(
-                f"{phase.relative_to(ROOT)}: phase file missing from "
-                f"{tracking.relative_to(ROOT)}"
+                f"{phase.relative_to(ROOT)}: phase file missing from {tracking.relative_to(ROOT)}"
             )
     for f in findings:
         print(f"plan status: {f}")
