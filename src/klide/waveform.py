@@ -18,7 +18,8 @@ Two consequences, both deliberate:
 - Carta 1200 claims a response time improvement over Carta 1000, so these are more likely to be
   slow than fast for this panel. Which way, and by how much, is unknown.
 
-Calibration is phase 5's, when the device is in hand: measure each mode and replace `FBINK_CLAIMS`
+Calibration belongs to the device client phase (6), when the Kobo is in hand: measure each mode
+and replace `FBINK_CLAIMS`
 with a profile carrying a real source. Nothing else has to change, because everything reads the
 durations through `Mode`.
 """

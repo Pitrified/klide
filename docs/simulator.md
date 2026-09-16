@@ -2,7 +2,8 @@
 
 The simulator stands in for a Kobo Libra 2 that is not here. This page is the list of things it
 asserts about that device, so that when the device arrives each one can be checked instead of
-rediscovered. Phase 3 built it; phase 5 is where these get compared against hardware.
+rediscovered. App phase 3 built it; the device client phase is where these get compared against
+hardware.
 
 Read it as a set of claims. Some are copied from documentation, some are policy the client chose,
 and one class is deliberately absent. They are separated below because the three fail differently.
@@ -79,8 +80,8 @@ what a client needs in order to decide when to flash, but the image is not degra
 degradation without something to calibrate it against would produce a number that looks like
 evidence and is not.
 
-**Optics, battery and wifi**, which are out of scope for the simulator and collected by phase 5
-instead.
+**Optics, battery and wifi**, which are out of scope for the simulator and collected when there is
+a device instead.
 
 **Real time.** Nothing sleeps. `elapsed_ms` accumulates what the modes claim, so the cost of a
 design shows up as a number rather than as a slow test.
@@ -104,8 +105,8 @@ doubled its refresh budget, which was found by trying it.
 
 ## What a device would falsify
 
-Worth writing down now, while the expectations are fresh, because this is the list phase 5 works
-through:
+Worth writing down now, while the expectations are fresh, because this is the list the device
+client phase works through:
 
 - the four durations, all of them
 - whether eight partials before a flash is too many, or needlessly few

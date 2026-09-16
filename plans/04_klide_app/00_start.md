@@ -44,6 +44,11 @@ runs beside the Kindle path, is still open and is a separate question from this 
   disconnect overlay, so the device client is later a port rather than a first attempt (A7).
 * **AD5. One wire protocol for simulator and device** (A6). Whatever the simulator speaks, the Kobo speaks.
 * **AD6. GPU only when something is measurably too slow**, and image rendering is the expected case (A4).
+* **AD9. The gates cannot judge the design, only defend it.** Every check in this repo compares klide's
+  output against a reference klide produced, which catches a change and cannot catch a decision that was
+  wrong when the reference was written. A person looking at the screen is the only signal that does not
+  originate inside the system, so the viewer is an instrument for getting that signal rather than a
+  convenience (phase 5). Evidence: body text rendered at 6.2 pt through three phases with every gate green.
 * **AD8. Text is sized in typographic points against the panel's real ppi, never in pixels.**
   The Libra 2 is 300 ppi, so a pixel size chosen while looking at a scaled-down frame on a desktop
   monitor comes out at about a quarter of its apparent size on the device. The renderer's first
@@ -116,6 +121,12 @@ Numbered `A` for this folder.
      rather than by accident, and that a viewer must not offer smooth dragging the panel cannot deliver.
   d. **What an agent gets from it.** Probably nothing. The script is the agent's interface and it already covers
      every gesture. This is for a person, which makes it lower priority than anything the gates use.
-  Which phase owns it is open. It is not phase 4, which is the host renderer and views, and it is not phase 5,
-  which is the device client. It may want a phase of its own, or it may stay unbuilt until someone wants to
-  look at klide rather than test it.
+  d. ~~**What an agent gets from it.**~~ ANSWERED 2026-09-16, and the answer reverses the guess above. The note
+     said "probably nothing", on the grounds that the script already covers every gesture. That was wrong in a
+     way worth keeping visible: it treated the viewer as another way to drive klide, when what it actually
+     supplies is the only judgement in the system that does not come from the system. Every gate here compares
+     klide's output against a reference klide produced, so the agent sets the expectation and then meets it. The
+     6.2 pt text survived three phases and every gate, and was caught by a person asking whether the screen
+     would be readable.
+  ~~Which phase owns it is open.~~ ANSWERED: its own phase, [`05_viewer.md`](05_viewer.md), and it comes before
+  the device client because it needs no hardware and the feedback is worth having before anything is ported.

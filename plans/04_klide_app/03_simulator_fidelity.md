@@ -29,7 +29,7 @@ client's own logic as well as the panel's. Context: [`00_start.md`](00_start.md)
 ## Out of scope
 
 - Optics, battery, wifi.
-- Anything that only matters on real hardware, which phase 5 collects instead.
+- Anything that only matters on real hardware, which the device client phase collects instead.
 
 ## Done when
 
@@ -53,7 +53,7 @@ claims about a Libra 2, and which claims are documentation rather than measureme
   device, so those are the figures used. Every `Mode` carries its source string and a test asserts
   that it says "not measured on a Libra 2".
 - **The ordering is trustworthy and the absolute values are not**, and the code says so rather than
-  implying otherwise. Calibration is a phase 5 task that replaces one table.
+  implying otherwise. Calibration happens when the device arrives and replaces one table.
 - **A gate that passed a change it should have caught.** Breaking the client deliberately found
   that quadrupling the flash rate moved no pixels, because ghosting is not modelled (A2), so the
   image comparison passed it. The fix is a refresh ledger: a text file recording what each step

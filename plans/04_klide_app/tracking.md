@@ -14,11 +14,12 @@ the requirements it inherits are in [`../00_initial/00_start.md`](../00_initial/
 - The frame is the evidence, which is where this track meets the meta one (MD10).
 - Python for the host, the renderer and the simulator, confirming D10 against written requirements (AD7).
 - The evidence is a PNG, references are committed, and the match tolerance is zero (A5, phase 2).
-- The refresh timings are FBInk's documented figures, not measurements, and calibration is a phase 5 task (phase 3).
+- The refresh timings are FBInk's documented figures, not measurements, and calibration waits for the device (phase 3).
 - The taller page buffer and the cache are one structure, a bounded cache of pages of any height (K9, phase 3).
 - Text is sized in points against the panel's real 300 ppi, never in pixels (AD8).
 - Colour is not translated to grey: diffs lead with their own markers, highlighting groups by prominence (phase 4).
 - Fonts are vendored so references stay reproducible without a system font (phase 4).
+- Every gate is self-referential, so a person looking at the screen is the one outside signal; phase 5 builds the viewer that provides it.
 
 ## Phases
 
@@ -28,7 +29,8 @@ the requirements it inherits are in [`../00_initial/00_start.md`](../00_initial/
 | 2  | Walking skeleton           | [`02_walking_skeleton.md`](02_walking_skeleton.md)             | done    |
 | 3  | Simulator fidelity         | [`03_simulator_fidelity.md`](03_simulator_fidelity.md)         | done    |
 | 4  | Host renderer and views    | [`04_host_renderer.md`](04_host_renderer.md)                   | done    |
-| 5  | Device client              | [`05_device_client.md`](05_device_client.md)                   | draft   |
+| 5  | Viewer and human feedback  | [`05_viewer.md`](05_viewer.md)                                 | planned |
+| 6  | Device client              | [`06_device_client.md`](06_device_client.md)                   | draft   |
 
 Status values: draft / planned / in progress / done / superseded / discarded.
 
@@ -43,3 +45,4 @@ Append-only. Newest at the bottom.
 - 2026-09-16 : fixed a legibility fault found by reading the frames as a physical object rather than as an image. The renderer used a 26 pixel font, which on a 300 ppi panel is 6.2 pt, about half the smallest size anyone sets a paperback in, and the point of the device is not straining to read it. Sizes are now typographic points converted through the new `Panel.ppi` (AD8): 11 pt body, 23 lines and about 51 characters a screen, 2.03 mm x-height. Two tests hold the floor, one on point size and one on lines per screen, because the mistake came from judging a 300 ppi frame on a desktop monitor and nothing structural stopped it. Raising the size then pushed every hand-wrapped line past the right edge, which the renderer clips silently, so a third test checks the canned pages fit. Both frame gates caught the change and the references were regenerated. Parked A8, how a person drives the simulator, since the viewer does not exist and the drag question is the part worth deciding deliberately
 - 2026-09-16 : answered the drag half of A8, provisionally: settle on release, short one-directional drags, which is Kindle-like behaviour a reader already expects. Nothing to build, because the wire carries a discrete direction rather than a continuous delta and panning happens once per gesture; the decision records that this stays deliberate. The rest of A8, whether a viewer gets built at all and which phase owns it, is still open
 - 2026-09-16 : phase 4 done. `uv run klide-views` gates all six views from fixtures; `uv run klide-live` watches a real session and streams it to the simulator, which is the first thing here that reads something nobody wrote for it. Rendering decisions in [`../../docs/rendering.md`](../../docs/rendering.md). The transcript format was read from a real file before anything was built on it, which is how the thinking finding surfaced: all 219 thinking blocks on this box carry an empty field and an opaque signature, so klide shows an activity marker because that is all the format supports. Fonts are vendored, since Pillow ships neither a monospace nor a bold. Colour is not translated to grey; diffs lead with the markers the format already has. Streaming rests on one property and that property is a test: dirty rectangles must converge on the same screen as sending the page. Running it against a real session found two defects the synthetic fixture could not, an empty heading for every tool-result turn and a heredoc rendering as a dozen lines, which is the argument for that command existing
+- 2026-09-16 : added phase 5, the viewer, and pushed the device client to 6. The reason is not convenience: every gate in this repo compares klide's output against a reference klide produced, so they catch a change and cannot catch a design that was wrong when the reference was written. The agent sets the expectation and then meets it. The 6.2 pt text is the proof, since it survived three phases with every gate passing and was caught by a person asking whether the screen would be readable. A8 is now fully answered: the viewer gets built, it owns its own phase, and it comes before the device client because it needs no hardware and the feedback is worth having before anything is ported
