@@ -172,23 +172,32 @@ def read(path: Path) -> list[Turn]:
     return turns
 
 
-def tail(path: Path, poll: float = 0.25, stop_after: float | None = None) -> Iterator[Turn]:
-    """Yield turns as they are appended, starting from the top of the file.
+class Follower:
+    """Reads a growing transcript, returning whatever is new each time it is asked.
 
-    Deliberately simple: reopen-free, offset-based, and it re-reads a line only if it was complete.
-    `stop_after` bounds the wait so a test or a scripted run terminates; without it this blocks
-    forever, which is what a live session wants.
+    Offset-based and reopen-free. A half-written last line is held back until its newline arrives,
+    because a transcript is appended to while it is read and a partial line is normal rather than a
+    fault.
+
+    A class rather than a generator because a viewer's event loop has to poll this alongside
+    everything else it is waiting on. `tail` is the generator wrapper for callers that only want
+    turns.
     """
-    deadline = None if stop_after is None else time.monotonic() + stop_after
-    offset = 0
-    pending = ""
-    while True:
-        with path.open("r", encoding="utf-8", errors="replace") as handle:
-            handle.seek(offset)
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._offset = 0
+        self._pending = ""
+
+    def poll(self) -> list[Turn]:
+        """Every complete turn appended since the last call."""
+        with self.path.open("r", encoding="utf-8", errors="replace") as handle:
+            handle.seek(self._offset)
             chunk = handle.read()
-            offset = handle.tell()
-        pending += chunk
-        *complete, pending = pending.split("\n")
+            self._offset = handle.tell()
+        self._pending += chunk
+        *complete, self._pending = self._pending.split("\n")
+        turns = []
         for line in complete:
             if not line.strip():
                 continue
@@ -199,7 +208,20 @@ def tail(path: Path, poll: float = 0.25, stop_after: float | None = None) -> Ite
             if isinstance(raw, dict):
                 turn = parse_record(raw)
                 if turn is not None:
-                    yield turn
+                    turns.append(turn)
+        return turns
+
+
+def tail(path: Path, poll: float = 0.25, stop_after: float | None = None) -> Iterator[Turn]:
+    """Yield turns as they are appended, starting from the top of the file.
+
+    `stop_after` bounds the wait so a test or a scripted run terminates; without it this blocks
+    forever, which is what a live session wants.
+    """
+    deadline = None if stop_after is None else time.monotonic() + stop_after
+    follower = Follower(path)
+    while True:
+        yield from follower.poll()
         if deadline is not None and time.monotonic() >= deadline:
             return
         time.sleep(poll)

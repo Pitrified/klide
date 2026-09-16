@@ -113,6 +113,12 @@ have broken that, and what was done instead:
 | a length prefix that needs 64-bit arithmetic | 4 bytes, and a frame is about a megabyte |
 | rows packed continuously across boundaries | each row padded to a whole byte |
 
-Unverified: no Lua client exists yet. The test that reads the header with byte arithmetic shows
-the header is readable that way, which is weaker than a working client and is the strongest check
-available before Q3 is answered.
+Checked by a second implementation since app phase 5. `viewer/klide_viewer.py` speaks this protocol
+without importing klide: it was written from the table above rather than from the code, and it
+decodes real frames from a real host over TCP. That is the difference between a format and a
+specification, and it found nothing wrong, which is the useful result.
+
+Still unverified: Lua. The viewer is Python, so it shares the language's habits even when it does
+not share the code, and the constraint this format was shaped by is what KOReader's Lua can parse.
+The test that reads the header with `string.byte` arithmetic stands in for that until Q3 is
+answered and a real plugin exists.

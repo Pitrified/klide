@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in progress
 ---
 
 # Phase 5 - Viewer and first human feedback
@@ -174,3 +174,29 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
 - Whatever that feedback changed is in the code, or recorded as deliberately not changed.
 
 ## What the implementation found
+
+Built, and waiting on the part only a person can do.
+
+- **The viewer is a klide client, not a window klide opens.** The host is headless, which was
+  checked rather than assumed, so there was never a window to open there. Making the viewer connect
+  over TCP turned the problem into the design the UI notes already described.
+- **AD5 is checked by something now.** `viewer/klide_viewer.py` decodes real frames from a real host
+  without importing klide, which is the first time the protocol has been read by code that was
+  written from the specification rather than sharing it. It found nothing wrong. Lua remains
+  unverified, because a second Python implementation still shares the language's habits.
+- **The duplication is gated.** `tests/test_viewer.py` pins the viewer's constants, refresh table,
+  input codes and decoder to klide's, so the two cannot drift without failing the `test` gate.
+- **Two defects came out of running it rather than testing it.** The host tracebacked with a broken
+  pipe when the viewer went away, which is what happens every time someone closes the window; and
+  the failure was then swallowed silently, which turned "the viewer closed" and "the send timed out"
+  into the same blank ending. Both fixed. A third was in the harness rather than the code: a
+  readiness probe that connected and closed was itself consuming the single connection `serve`
+  accepts.
+- **TCP is alongside the unix socket, not instead of it.** The gates keep using the unix socket,
+  which needs no port and cannot collide, so nothing already green was disturbed by adding a
+  transport.
+
+## Still to do
+
+The part this phase exists for. A person has to sit with it, and what they say has to be written
+down and acted on. Until that happens the phase is not done, however much of it runs.

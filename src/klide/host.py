@@ -1,12 +1,15 @@
 """The host side of the wire.
 
-A unix socket, because both ends are processes on one machine. The real device connects outward
-over TCP (Tailscale, LAN or USB networking), which changes the lines that create the socket and
-nothing above them.
+Two ways in, one protocol. A unix socket for anything on this machine, which is what the gates use
+because it needs no port and cannot collide. TCP for anything that is not, which is the viewer on a
+PC today (phase 5) and the Kobo over Tailscale later (D8).
 
-Phase 2 sent one frame and closed. Phase 3 needs the connection to stay open, because input
-travels the other way and a device that has to reconnect to report a swipe is not a design anyone
-would ship.
+The difference is two lines of socket setup. Everything above `listen` is the same, which is the
+point: the viewer is not a special case, it is the first client that happens not to be local.
+
+Phase 2 sent one frame and closed. Phase 3 needs the connection to stay open, because input travels
+the other way and a device that has to reconnect to report a swipe is not a design anyone would
+ship.
 """
 
 from __future__ import annotations
@@ -43,17 +46,39 @@ class HostLink:
         self._conn.close()
 
 
+#: Where a TCP host listens by default. Above 1024 so an unprivileged user can bind it, which AD10
+#: requires: klide has to run on a host we may not administer.
+DEFAULT_PORT = 5000
+
+#: A unix socket path, or a host and port.
+Address = Path | tuple[str, int]
+
+
+def _listener(address: Address) -> socket.socket:
+    """Open a listening socket for either kind of address."""
+    if isinstance(address, Path):
+        address.parent.mkdir(parents=True, exist_ok=True)
+        address.unlink(missing_ok=True)
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server.bind(str(address))
+        return server
+    host, port = address
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Without this a viewer that reconnects within the TIME_WAIT window is refused, which during a
+    # feedback session is every second or third restart.
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind((host, port))
+    return server
+
+
 @contextmanager
-def serve(socket_path: Path, timeout: float = 10.0) -> Iterator[HostLink]:
+def serve(address: Address, timeout: float = 10.0) -> Iterator[HostLink]:
     """Bind, accept one device, and hold the connection open for the block.
 
     One device at a time. Several conversations are several pages to the same screen, not several
     screens, so nothing yet needs a second client.
     """
-    socket_path.parent.mkdir(parents=True, exist_ok=True)
-    socket_path.unlink(missing_ok=True)
-    with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as server:
-        server.bind(str(socket_path))
+    with closing(_listener(address)) as server:
         server.listen(1)
         server.settimeout(timeout)
         conn, _ = server.accept()
@@ -63,10 +88,11 @@ def serve(socket_path: Path, timeout: float = 10.0) -> Iterator[HostLink]:
             yield link
         finally:
             link.close()
-            socket_path.unlink(missing_ok=True)
+            if isinstance(address, Path):
+                address.unlink(missing_ok=True)
 
 
-def serve_once(frame: Frame, socket_path: Path, timeout: float = 10.0) -> None:
+def serve_once(frame: Frame, socket_path: Address, timeout: float = 10.0) -> None:
     """Send one frame to the first device that connects, then close.
 
     Kept because the walking skeleton is the frame gate and there is no reason for that check to
@@ -77,7 +103,7 @@ def serve_once(frame: Frame, socket_path: Path, timeout: float = 10.0) -> None:
 
 
 def serve_script(
-    socket_path: Path, script: Callable[[HostLink], None], timeout: float = 10.0
+    socket_path: Address, script: Callable[[HostLink], None], timeout: float = 10.0
 ) -> None:
     """Run `script` against one connected device. The scripted session's host side."""
     with serve(socket_path, timeout) as link:

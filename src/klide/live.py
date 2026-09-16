@@ -23,8 +23,10 @@ from pathlib import Path
 from klide.compare import save_frame
 from klide.device import Device
 from klide.frame import Frame
+from klide.host import DEFAULT_PORT, serve
 from klide.panel import KOBO_LIBRA_2, Panel
 from klide.render import Metrics, render_lines
+from klide.serve import run as serve_live
 from klide.stream import Coalescer, dirty_rectangle, pick_waveform
 from klide.transcript import Turn, read, tail
 from klide.views import conversation
@@ -75,12 +77,24 @@ def main(argv: list[str] | None = None) -> int:
         "--transcript", type=Path, help="a .jsonl to watch (default: newest for this project)"
     )
     parser.add_argument("--project", type=Path, default=ROOT, help="project to find a session for")
-    parser.add_argument("--seconds", type=float, default=10.0, help="how long to watch")
+    parser.add_argument(
+        "--seconds", type=float, default=None, help="how long to watch (default: until stopped)"
+    )
     parser.add_argument("--turns", type=int, default=6, help="how many recent turns to draw")
     parser.add_argument(
         "--once",
         action="store_true",
         help="render the transcript as it stands and exit, without watching",
+    )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="serve a viewer over TCP instead of writing frames to disk",
+    )
+    parser.add_argument("--bind", default="0.0.0.0", help="address to listen on with --serve")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument(
+        "--wait", type=float, default=300.0, help="how long to wait for a viewer to connect"
     )
     args = parser.parse_args(argv)
 
@@ -94,6 +108,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"live: {missing}", file=sys.stderr)
         return 1
     print(f"live: watching {path}")
+
+    if args.serve:
+        return _serve(path, panel, metrics, args)
 
     if args.once:
         existing = read(path)
@@ -128,6 +145,23 @@ def main(argv: list[str] | None = None) -> int:
         f"{device.elapsed_ms} ms of claimed panel time"
     )
     print(f"live: frames in {ARTIFACTS.relative_to(ROOT)}")
+    return 0
+
+
+def _serve(path: Path, panel: Panel, metrics: Metrics, args: argparse.Namespace) -> int:
+    """Wait for a viewer and stream the session to it."""
+    where = f"{args.bind}:{args.port}"
+    print(f"live: waiting for a viewer on {where} (up to {args.wait:.0f}s)")
+    print("live: on the machine with a screen, run")
+    print(f"live:   python3 klide_viewer.py --host <this host> --port {args.port}")
+    try:
+        with serve((args.bind, args.port), timeout=args.wait) as link:
+            print("live: viewer connected")
+            state = serve_live(link, path, panel, metrics, window=args.turns, seconds=args.seconds)
+    except TimeoutError:
+        print(f"live: no viewer connected within {args.wait:.0f}s", file=sys.stderr)
+        return 1
+    print(f"live: viewer gone, {len(state.turns)} turns seen")
     return 0
 
 
