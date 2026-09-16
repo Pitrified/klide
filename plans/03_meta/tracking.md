@@ -21,7 +21,7 @@ The app being built alongside is tracked in [`../04_klide_app/00_start.md`](../0
 
 | #  | Phase                   | Plan                                                      | Status |
 | -- | ----------------------- | --------------------------------------------------------- | ------ |
-| 1  | Adopt practices         | [`01_adopt_practices.md`](01_adopt_practices.md)           | in progress |
+| 1  | Adopt practices         | [`01_adopt_practices.md`](01_adopt_practices.md)           | done |
 | 2  | Guardrails              | [`02_guardrails.md`](02_guardrails.md)                     | done |
 | 3  | Interaction contract    | [`03_interaction_contract.md`](03_interaction_contract.md) | planned |
 | 4  | Diary and session review| [`04_diary_and_review.md`](04_diary_and_review.md)         | planned |
@@ -43,3 +43,4 @@ Append-only. Newest at the bottom.
 - 2026-09-16 : confirmed that a skill written during a session does not register until the next one. Invoking `principles` mid-session returns "Unknown skill". Phase 1 stays in progress for that reason alone
 - 2026-09-16 : reversed the enforcement decision from phase 2. The argument against a pre-commit hook was that it is bypassable, which only holds when CI runs, and CI has never run because this box has no GitHub credentials. Added `.githooks/pre-commit` calling the same `scripts/check.sh`, shared through `core.hooksPath` and installed by `scripts/install-hooks.sh`. Verified that a commit carrying a banned em dash is refused with no commit object written, and that a clean tree commits normally
 
+- 2026-09-16 : phase 1 done. A fresh session ran the four checks the phase was waiting on: `principles` and `deslopify` both appear in the skill list, `principles` invokes and returns its four rules; the repo instructions carry the Planning section and the mannered-writing paragraphs; `scripts/check.sh` passes cold on 32 files with no findings. Nothing was wrong, so the phase closed unchanged
