@@ -1,0 +1,4 @@
+\b(extremely|dramatically|exceptionally|significantly|incredibly|remarkably|truly|absolutely)\b
+\bliterally\b
+\b(vital|essential|critical) (to|for) (the )?(success|understanding)\b
+\bvery (important|useful|good|bad)\b

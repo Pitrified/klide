@@ -7,6 +7,16 @@ recognise by its two failure modes. On one side, padding that makes a page longe
 it say more. On the other, cutting the detail that was the reason to write the sentence at all.
 Aim between them.
 
+Behind most of the habits below is one failure, worth naming because it explains the rest.
+The mannered writer reaches for the unusual word to show what he is, rather than to show the reader what he means.
+Prose is a window onto the subject, and the mannered kind is a window with the writer's face reflected in it.
+Pinker calls the alternative classic style: the writer has seen something and is pointing at it.
+The habit is not even effective. Oppenheimer's 2006 study found that needlessly complex wording lowers, not raises,
+the reader's estimate of the author's intelligence, and Sperber's guru effect explains the illusion that keeps it alive,
+which is that a sentence hard to understand gets read as profound before it gets read as unclear.
+An agent writing here inherits the same tic from its training data, so the rule is the same for both of us:
+the word that carries the meaning, not the word that carries the writer.
+
 The specific habits to avoid:
 
 - **No hype.** Adjectives and adverbs that carry tone but no information: seamless, robust,

@@ -1,0 +1,44 @@
+\b(delve|delving)\b
+\btapestry\b
+\b(testament|stands as)\b
+\bseamless(ly)?\b
+\b(pivotal|paramount|crucial)\b
+\bunderscore(s|d)?\b
+\b(landscape|realm|sphere) of\b
+\bnavigat(e|ing) the\b
+\bfoster(s|ing)?\b
+\bleverage(s|d)?\b
+\bmeticulous(ly)?\b
+\bintricate\b
+\bboasts\b
+\bgame.?chang(er|ing)\b
+\b(seismic|monumental|transformative) (shift|change)\b
+\bunwavering\b
+\bcommendable\b
+\belevate(s|d)? (the|your)\b
+\bshowcas(e|es|ing)\b
+\bresonate(s|d)?\b
+\brich (cultural )?(heritage|history|tradition)\b
+\bvibrant\b
+\bplays? a (vital|key|crucial|pivotal) role\b
+\bdeep(er)? dive\b
+\bunlock(s|ing)? (the|your)\b
+\bharness(es|ing)? the\b
+\bembark(s|ed|ing)? on\b
+\bever.?(evolving|changing)\b
+\bfast.?paced (world|environment)\b
+\bin today'?s\b
+\bat the end of the day\b
+\bcutting.?edge\b
+\brobust\b
+\bholistic\b
+\bsynergy\b
+\bempower(s|ing|ment)?\b
+\bstreamlin(e|es|ed|ing)\b
+\bunveil(s|ed|ing)?\b
+\b(utilize|utilise)(s|d)?\b
+\bfacilitate(s|d)?\b
+\bbolster(s|ed)?\b
+\bshed light on\b
+\bpave the way\b
+\ba (myriad|plethora) of\b

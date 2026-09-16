@@ -1,0 +1,14 @@
+not (just|only|merely|simply|solely) [^.;]{2,80}(but|it'?s)
+isn'?t (just|only|merely|simply|about)
+it'?s not (a|an|the|that|about|just) [^.;]{2,80}(it'?s|but)
+(is|was|are|were)n'?t about [^.;]{2,60}\. (it|this|that)'?s about
+less about [^.;]{2,60}(than|and more about)
+more than (just|a mere|simply)
+not because [^.;]{2,80}but because
+the (question|point|issue|problem|goal|real [a-z]+) is(n'?t| not) (whether|about|just|if)
+(doesn'?t|don'?t|didn'?t|won'?t) (just|merely|simply) [^.;]{2,80}(it|they|he|she|we)
+no [a-z]+, no [a-z]+(, no [a-z]+)?[,.]? just
+not only [^.;]{2,80}but (also )?
+we'?re not (just )?(talking about|looking at|dealing with)
+gone are the days
+(here|this)'?s the (thing|kicker|catch|twist)

@@ -1,0 +1,22 @@
+it( i|')s (worth|important) (to note|noting|to remember|to consider)
+(that|it) (being )?said,
+while (it'?s|this is) (true|important)
+\barguably\b
+in many ways
+to some (extent|degree)
+on the other hand
+at its core
+in essence
+^essentially,
+^ultimately,
+in conclusion
+in summary
+to sum(marize| up)
+^overall,
+in the end,
+needless to say
+as (we|you) (can see|know|all know)
+let'?s (dive|unpack|explore|take a (look|closer look))
+whether you('re| are) [^.;]{2,60} or
+\b(helps ensure|may be able to|can potentially)\b
+\b(furthermore|moreover|notwithstanding)\b

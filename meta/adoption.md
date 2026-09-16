@@ -52,6 +52,19 @@ around 60 words. The body, around 2.4 KB, loads only when the skill is invoked.
 The alternative considered and rejected was putting the principles in `copilot-instructions.md`,
 which would load all of it into every session whether or not the work needed it.
 
+## A second source
+
+[deslopify](https://github.com/JuliusBrussee/skills) by Julius Brussee, taken and adapted on 2026-09-16 as
+[`.claude/skills/deslopify/`](../.claude/skills/deslopify/). Taken because it is the one thing that makes the
+repo's existing writing rules checkable rather than aspirational: the rules were already written, nothing enforced them.
+
+Two changes from the original. The pattern catalog became runnable: a script over pattern files per category,
+so the scan is one command rather than a page of greps to paste. And the house rules became their own category,
+since this repo bans em dashes outright where the original only counts their density.
+
+The other repos on this box carry the same "How to write" section as this one, checked on 2026-09-16.
+Nothing in them needed folding in, and the script is written to be copied out to them unchanged.
+
 ## What to re-read later
 
 pstack is worth a second pass once the app has code and the gates exist. The parts most likely to become

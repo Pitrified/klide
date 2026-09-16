@@ -1,0 +1,4 @@
+^[-*] +\*\*[^*]+:\*\*
+serves as (a|an|the)
+stands as (a|an|the)
+\bis the [a-z]+ of [a-z]+ for\b
