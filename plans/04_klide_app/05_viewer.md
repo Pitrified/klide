@@ -34,8 +34,42 @@ MD10 says the frame is the evidence, and this phase is about who gets to judge i
 2. A person can drive it: the page-turn buttons, a tap, a swipe.
 3. Feedback from doing that is collected and acted on, and the ones that change the design are recorded.
 
+## Where it runs
+
+Not on the host. Checked 2026-09-16: this box is headless, with no `DISPLAY` and no `WAYLAND_DISPLAY`,
+and the next host may be one we do not administer (AD10). A window cannot be opened where klide runs.
+
+So the viewer is a klide client that happens to run on a PC. It connects to the host the way the UI
+notes already say a device does, outward over a socket, which makes it the first real network client
+rather than a special case. The Kobo will do the same later over Tailscale.
+
+The measured topology, one hop:
+
+    WSL2 and WSLg on Windows          the viewer, a window
+      |  TCP
+      v
+    wherever Claude runs              the klide host, headless
+
+Two ways across, neither needing anything privileged:
+
+- `ssh -L 5000:localhost:5000 <host>` from WSL. Client-side only. `AllowTcpForwarding` defaults to yes
+  in OpenSSH and is not disabled here, so this needs no server change.
+- Tailscale on the WSL machine, which is tidier and is a setup step rather than a flag.
+
+What this costs on the host: nothing. An unprivileged user can bind a high TCP port, verified. No
+privileged command, no install, no sshd edit, no boot step, nothing to ask an admin for. The host does
+not even need tkinter, which is just as well since its system Python has none.
+
+What it costs on the WSL side: `python3-tk`, one apt install. WSLg was confirmed working there
+(WSL 2.5.10, WSLg 1.0.66, `DISPLAY=:0.0`), and that machine is being replaced soon, which is an argument
+for keeping its setup to one package and one file.
+
+The host needs TCP, which it does not have yet: `host.py` speaks unix sockets only. That is not extra
+work, it is the device client's transport (D8, Q4) pulled forward a phase.
+
 ## Plan
 
+- Add TCP to the host, alongside the unix socket the gates use.
 - A window showing the current frame, scaled to fit an ordinary monitor, redrawing when the frame changes.
   The scale factor is displayed, because a 300 ppi panel shown at 96 ppi is misleading by default and
   that misleading is exactly what caused the legibility fault.
@@ -51,16 +85,26 @@ MD10 says the frame is the evidence, and this phase is about who gets to judge i
 
 ## Out of scope
 
-- Anything the device does. This is a window onto the simulator, not a second client.
+- The device's own logic. The viewer is a client of the host, but the cache, the page buffer and the
+  disconnect overlay stay in the simulator where phase 3 put them (AD4). The viewer shows a screen and
+  forwards presses; it does not become a second implementation of the client.
 - Making the viewer pretty. It is an instrument.
 - Becoming a gate. It cannot be one: a person is not deterministic, and that is the point of it.
 
 ## Open questions
 
-- V1: What the viewer is written in. Python with tkinter is in the standard library and needs no
-  new dependency, which matters because this box has no node and the stack doc's R8 applies here too.
-  A browser page served locally is the alternative and pulls in more. Recommended: tkinter, and
-  revisit if it fights.
+- ~~V1: What the viewer is written in.~~ ANSWERED 2026-09-16: Python and tkinter, under WSLg.
+  Confirmed working on the target machine. It needs `python3-tk` there, which is one apt install on a
+  machine we administer and which is being replaced soon anyway. A browser page was the alternative and
+  pulls in more for no gain, now that nothing has to be served to a remote display.
+- V3: Whether the viewer imports `klide` or reimplements the protocol in one self-contained file.
+  Importing means no duplication, and means the WSL machine needs the repo synced and kept in step.
+  A single file means copying one thing to whatever PC is current, and it would be the first
+  implementation of the wire protocol written against the specification rather than sharing its code,
+  which is the AD5 check [`../../docs/protocol.md`](../../docs/protocol.md) currently records as
+  unverified. The cost is roughly forty duplicated lines of header parsing.
+  Recommended: self-contained, for the same reason the repo vendors fonts. The thing being checked has
+  to be checkable from outside. Not yet decided.
 - V2: Whether the viewer shows the panel's claimed refresh behaviour, or ignores it. Showing it
   means a redraw takes the hundreds of milliseconds the simulator claims, which is what makes a
   design that redraws too often feel as bad as it would on the device. MD10 argues for showing it.

@@ -44,6 +44,14 @@ runs beside the Kindle path, is still open and is a separate question from this 
   disconnect overlay, so the device client is later a port rather than a first attempt (A7).
 * **AD5. One wire protocol for simulator and device** (A6). Whatever the simulator speaks, the Kobo speaks.
 * **AD6. GPU only when something is measurably too slow**, and image rendering is the expected case (A4).
+* **AD10. klide runs as an unprivileged user on a host someone else may administer.**
+  We have root on this box and may not have it on the next one, where Claude could be installed for us
+  by an admin we can ask for one thing but not for a recurring boot step. So: no sudo in the normal
+  path, nothing needing a service or an `/etc` change, and no privileged setup repeated per host.
+  Asking an admin once for a package is acceptable; building ten hoops into the code to avoid asking is
+  not. This is what rules out X11 forwarding for the viewer, since that needs `X11Forwarding yes` in
+  sshd_config on every host, and what makes the viewer a network client instead (phase 5).
+
 * **AD9. The gates cannot judge the design, only defend it.** Every check in this repo compares klide's
   output against a reference klide produced, which catches a change and cannot catch a decision that was
   wrong when the reference was written. A person looking at the screen is the only signal that does not
