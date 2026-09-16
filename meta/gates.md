@@ -28,6 +28,7 @@ markdown and spelling tools; that constraint kept the gates small, which is not 
 | lint | unused imports, unsorted imports, the bugbear set | found a real unused `import sys` in `scripts/gates/plan_status.py` on its first run |
 | types | anything mypy's strict mode rejects | by changing one annotation from `str` to `int`, which it traced to three call sites |
 | test | a unit test failing | by changing an expected panel dimension |
+| frames | a rendered frame differing from its reference, anywhere, by any amount | by moving the render margin one pixel, which it located at x=26 y=31 |
 
 House style runs the [deslopify](../.claude/skills/deslopify/) scanner restricted to its `house_rules` category.
 The other categories stay advisory and are run by hand, because they need triage: a list of three real things
@@ -43,15 +44,26 @@ setup beyond uv and they run the same versions in a worktree as here. `uv.lock` 
 that reason. They take most of the script's runtime now, and it is still short enough to sit in a
 pre-commit hook.
 
-## The slot still open
+## The frame gate
 
-| slot | what it will check |
-| --- | --- |
-| frames | a rendered frame against its reference, which is the gate MD10 is about and the only one specific to this project |
+Filled by app phase 2. It is the only gate specific to this project, and it is what MD10 means by
+the frame being the evidence.
 
-This one cannot be filled yet. A5 leaves the evidence format, the reference storage and the match
-tolerance to app phase 2, on the grounds that the first real frame comparison shows what the
-answer has to be. Writing the gate before that would be guessing at all three.
+`uv run klide-skeleton` runs the whole loop: the host renders a page at panel size, serves it over
+a socket, the simulator receives it and writes it out, and what arrived is compared against
+`tests/references/skeleton.png`. It compares the received frame rather than the rendered one, so a
+protocol bug fails the gate instead of slipping past it.
+
+The tolerance is zero, at the panel's own 4-bit depth. That is defensible because this compares
+the host's output before any panel is involved, and the host is deterministic: the font comes from
+Pillow rather than the system, and Pillow is pinned in `uv.lock`. The ceiling is named rather than
+hidden: a Pillow upgrade shifts antialiasing and the references need regenerating with `--update`,
+which shows up as a reviewable diff of image files.
+
+On failure it writes `build/frames/<name>.diff.png`, the rendered frame with every differing pixel
+in red, and says which file to look at and how to accept the change if it was intended. The
+reasoning behind the format, the storage and the tolerance is in
+[`../src/klide/compare.py`](../src/klide/compare.py), which is where A5 is answered.
 
 ## Enforcement point
 

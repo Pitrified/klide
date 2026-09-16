@@ -25,6 +25,11 @@ run "lint"        uv run --quiet ruff check .
 run "types"       uv run --quiet mypy
 run "test"        uv run --quiet pytest -q
 
+# The frame gate. This is the one check specific to this project (MD10): it runs the
+# skeleton end to end, host to wire to simulator, and compares what arrived against the
+# reference committed under tests/references/.
+run "frames"      uv run --quiet klide-skeleton
+
 echo
 if [[ ${#failed[@]} -eq 0 ]]; then
   echo "all gates passed"

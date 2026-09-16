@@ -74,6 +74,13 @@ Numbered `A` for this folder.
   as a match on a 1 bit or 4 bit panel.
   ANS: unknown, and settled by doing rather than by deciding now. Phase 2 owns it, because the first real frame
   comparison will show what the answer has to be.
+  ANSWERED in phase 2, three parts. The format is an 8-bit greyscale PNG, which is lossless with respect to the
+  4-bit levels it came from because spreading a level multiplies it by 17 and a shift of four undoes that exactly,
+  so nothing is given up by storing the form a person can open. References live in the repo, because a reference
+  generated on demand agrees with whatever the code currently does, which is the one thing a gate must not do.
+  The tolerance is zero, because the comparison is of the host's output before any panel is involved and the host
+  is deterministic once the font comes from pinned Pillow rather than the system. The 1 bit case is untouched:
+  packing raises `UnsupportedDepthError` below 4bpp, and the reasoning is in `src/klide/compare.py`.
 - A6: Whether the simulator speaks the same wire protocol as the real client will. If it does, the device client
   becomes a second implementation of a settled contract rather than a rewrite.
   Recommended: yes, and let that constrain the protocol early.
