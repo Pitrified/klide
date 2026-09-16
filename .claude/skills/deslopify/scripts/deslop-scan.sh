@@ -55,13 +55,16 @@ for file in "$@"; do
   # Cadence: runs of four or more consecutive sentences within 4 words of each other.
   # Tables, lists and headers are dropped first; they are not prose and their
   # regularity is not a tell. Sentences under 8 words are skipped for the same reason.
+  # A run has to sit inside one paragraph. Counting across blank lines measures the
+  # document's structure rather than the writer's rhythm, and fires on every list.
   cadence="$(printf '%s\n' "$body" | grep -Ev '^[[:space:]]*([-*|#>]|[0-9]+\.)' \
-    | tr '\n' ' ' | sed 's/[.!?][])"]* /\n/g' \
-    | awk 'NF >= 8 {print NF}' \
+    | awk 'NF == 0 {print "==PARA=="; next} {printf "%s ", $0} END {print ""}' \
+    | sed 's/[.!?][])"]* /\n/g' \
     | awk 'BEGIN {run = 1; worst = 1}
-           NR > 1 && ($1 - prev <= 4 && prev - $1 <= 4) {run++; if (run > worst) worst = run; next}
-           NR > 1 {run = 1}
-           {prev = $1}
+           /==PARA==/ {run = 1; prev = -99; next}
+           NF < 8 {run = 1; prev = -99; next}
+           (NF - prev <= 4 && prev - NF <= 4) {run++; if (run > worst) worst = run; prev = NF; next}
+           {run = 1; prev = NF}
            END {print worst+0}')"
   if [[ ${cadence:-0} -ge 4 ]]; then
     file_total=$((file_total + 1))

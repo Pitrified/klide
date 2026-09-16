@@ -18,7 +18,7 @@ Context: [`../00_initial/00_start.md`](../00_initial/00_start.md). Depends on [`
 
 1. Touch events sent from device to host over the existing connection.
 2. Navigation: switch conversation, scroll, open a file, open a diff.
-3. Nothing else. Navigation is the whole phase.
+3. Nothing else; the phase covers navigation only.
 
 ## Plan
 

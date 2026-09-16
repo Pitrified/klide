@@ -62,7 +62,7 @@ Push, from a connection the device opens outward to the host. That works the sam
 and it avoids the host needing to find the device.
 Polling was rejected for the Kindle path already, and nothing about Kobo brings it back.
 
-The catch is device-side concurrency, which differs by client shape:
+Device-side concurrency is the difficulty, and it differs by client shape:
 
 - **KOReader plugin.** Lua with a single UI event loop, so a blocking read is not available. The pattern other plugins use is a non-blocking socket polled from `UIManager:scheduleIn` at a short interval. That is local polling, not network polling, and it costs a wakeup rather than a round trip. It also puts a floor on latency equal to the poll interval.
 - **Native binary.** Two threads or two processes, one blocking on the socket and one on the input device. Simpler concurrency, more to build and install.
@@ -71,7 +71,7 @@ Either way the shape is a slideshow driven by the host: the host decides when a 
 
 ## How fast
 
-Three limits, in the order they bite.
+Three limits, in the order they apply.
 
 1. **The reader.** Streaming every token to e-ink is pointless. The host should coalesce and send a frame when the content settled, or on a cadence, whichever comes first.
 2. **The panel.** KOReader exposes refresh modes, `a2`, `fast`, `ui`, `partial`, `flashui`, `flashpartial`, `full`, and the fast ones trade quality for latency. Partial updates accumulate ghosting until a full refresh clears it. How many, and how slow each is, is a measurement the spike has to take.
@@ -81,10 +81,10 @@ Text appearing a line or a paragraph at a time, with a full refresh occasionally
 
 ## Fullscreen
 
-Yes, and not by choice. KOReader takes over the framebuffer and Nickel is suspended while it runs, so there is no window, no chrome and no status bar
+Yes, and there is no alternative. KOReader takes over the framebuffer and Nickel is suspended while it runs, so there is no window, no chrome and no status bar
 unless klide draws one. A native binary is the same picture, except it has to stop Nickel itself or Nickel will paint over it.
 
-The real UX problem in this area is not framing but sleep. The device suspends on its own, and a display that goes blank mid-answer is useless.
+Sleep is the harder problem here. The device suspends on its own, and a display that goes blank mid-answer is useless.
 KOReader has the machinery for this, and battery life is the counterweight.
 
 ## Rough view set
@@ -112,14 +112,14 @@ Recorded 2026-09-05, from a first read of the above. Leanings, not settled.
   on wake. The socket does not have to survive a suspend, it has to come back without ceremony.
 * **K5, yes.** The device holds a little state. See the cache note above for the size.
 * **K6, keep showing the cache and overlay a marker.** A stale frame with a visible warning beats a blank screen.
-  This is the one place the client has to draw something itself rather than blit what it was sent, since the host is by definition gone.
+  Here the client has to draw something itself instead of blitting what it was sent, since the host is by definition gone.
   As a KOReader plugin that is free.
 
 ## Pinch to zoom
 
 The gesture is available, KOReader detects pinch and spread. What is not available is a smooth zoom.
 
-Two reasons. The panel cannot track fingers continuously, so anything gradual will look like a slideshow of intermediate states.
+The panel cannot track fingers continuously, so anything gradual will look like a slideshow of intermediate states.
 And the frame is a bitmap the host rendered at one size, so scaling it on the device gives a blurry image rather than more detail.
 
 The workable version is discrete: detect the gesture, treat it as one step of text size, ask the host to re-render, replace the frame.

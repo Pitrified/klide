@@ -6,7 +6,7 @@ status: planned
 
 ## Overview
 
-The point of the other four phases. One bounded piece of real work, run without a person watching,
+What the other four phases are for. One bounded piece of real work, run without a person watching,
 and judged on whether the evidence it produced is trustworthy.
 Context: [`00_start.md`](00_start.md). Depends on phases 2, 3 and 4, MD9 sets what the agent is allowed to do: anything needing no GitHub credentials.
 
@@ -20,11 +20,11 @@ Context: [`00_start.md`](00_start.md). Depends on phases 2, 3 and 4, MD9 sets wh
 
 - Pick a task that is real, bounded and reversible, with a finish condition a script can check.
 - Set the blast radius explicitly: which paths may be written, whether a commit is allowed, and what must never happen.
-  No push is possible from this box, which is a useful accident.
+  No push is possible from this box, which helps here.
 - Run it. Keep everything: transcript, gate output, artifacts.
 - Review against the evidence contract from phase 3, not against the summary the agent wrote about itself.
 - Only then consider width, and only one step of it: a second agent, in a worktree (MD8).
-  The rigor comes first, which is the whole argument of the source material, and concurrency is the last dial to turn.
+  The rigor comes first, which is the argument the source material makes, and concurrency is the last dial to turn.
 
 ## Out of scope
 

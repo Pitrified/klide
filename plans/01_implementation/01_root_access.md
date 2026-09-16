@@ -30,7 +30,7 @@ Context: [`../00_initial/00_start.md`](../00_initial/00_start.md).
   which calibre rebuilds from the host library.
   Verify the copy by comparing SHA-256 per file in both directions, not by size and not by rsync's exit code.
 - Remove any device password lock; LanguageBreak requires none.
-- Run the kindlemodding jailbreak wizard against the actual model and firmware, and follow whichever exploit it names rather than the table in `00_start.md`. The table is a map, not a spec.
+- Run the kindlemodding jailbreak wizard against the actual model and firmware, and follow whichever exploit it names rather than the table in `00_start.md`, which summarises published ranges and can be out of date.
 - ~~Read the LanguageBreak walkthrough end to end and confirm the flow needs no network.~~ Done 2026-09-04; see Risks. The shape of the procedure, recorded here so the sequencing is known in advance, with the published guide remaining the source of truth for the exact steps:
   factory reset, dismiss the setup wizard's wifi step, `;enter_demo` in the search bar and reboot, skip demo wifi and enter fake information, choose the `standard` demo type,
   clear the misconfiguration error with a two-finger tap then left swipe, sideload the LanguageBreak files to root over USB,
@@ -68,7 +68,7 @@ Context: [`../00_initial/00_start.md`](../00_initial/00_start.md).
 
 - ~~The setup wizard may require wifi.~~ **Resolved 2026-09-04 by reading the walkthrough.** Airplane mode ON is a stated prerequisite of the exploit, the setup wizard's wifi step is dismissed by selecting any network and backing out, and demo mode's own setup is skipped with fake information. No step needs a network or an Amazon account. Watch for one small tension at the screen: with airplane mode on there may be no networks listed to select and back out of.
 - The 5.14.1.1 to 5.16.2.1.1 jump may not apply in one step if Amazon expects intermediate versions. Then apply the closest intermediate version available and repeat, still offline, still never past 5.16.2.1.1.
-- A failed or interrupted flash is the one new risk the update step adds. It is Amazon's own signed image applied through the stock updater, which is the supported path, but verify the download against a second copy first and keep the device on the charger through the update.
+- A failed or interrupted flash is the new risk the update step adds. It is Amazon's own signed image applied through the stock updater, which is the supported path, but verify the download against a second copy first and keep the device on the charger through the update.
 - The update is one-way until the device is rooted: kindlemodding's downgrade procedure requires a jailbreak. Nothing here needs 5.14.1.1, so the cost is losing the option of retrying the exploit from below 5.16.2.
 - A factory reset with `renametobin` already active locks the device. Order matters: reset first, jailbreak, then block updates.
 - If both firmware levels fail, the project stops and gets reconsidered (Q6). There is no automatic migration to other hardware; the vendor comparison in the research file is background, not a queued fallback.

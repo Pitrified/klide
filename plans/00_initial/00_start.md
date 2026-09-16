@@ -182,8 +182,8 @@ and a (deprecated) [Debian chroot](https://github.com/simonachmueller/DebianKind
   WinterBreak and SpringBreak (both need a registered device and store access).
 
 * **D5. Root access comes first, before any klide code.**
-  Not because it is the interesting part, but because the OTA window is the one thing here that can close permanently.
-  Everything else can be built at leisure.
+  The OTA window is the only thing in this project that can close permanently.
+  Everything else can be built later, in any order.
 
 * **D6. Claude runs on the $20/month Pro subscription. No API-billed call is acceptable.**
   This is a hard cost constraint, and it has a specific trap: Claude Code's `--bare` flag "doesn't use your subscription login"

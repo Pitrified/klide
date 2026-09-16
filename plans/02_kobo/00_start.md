@@ -65,7 +65,7 @@ No demo mode, no timing-critical replug, no anti-rollback, no OTA fear. Wifi is 
 ## Launcher
 
 Nickel, the stock UI, will not start anything that is not Kobo's, and there is no app list or shell to reach from it.
-A launcher is the bridge: something running outside Nickel that notices an action the user can take inside it, and spawns a program.
+A launcher is a program running outside Nickel that watches for an action the user can take inside it, and starts something when it sees one.
 
 KFMon is a daemon started at boot from a udev rule. It watches with inotify for one chosen file being opened in Nickel and runs the command bound to it.
 The KOReader entry looks like a book in the library; tapping it starts KOReader.

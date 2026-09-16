@@ -18,8 +18,8 @@ What changed is the starting point and the method.
 
 * **Simulator first (MD5).** The Kobo is not here, and a simulator is wanted anyway. It is what makes the app
   testable without hardware, and it is the cheapest source of the observable evidence the meta track needs (M7).
-* **Agent friendly.** The simulator is not primarily for a human to look at. It exists so an agent can run the app,
-  capture what the screen would show, compare it against a reference and see its own mistakes.
+* **Agent friendly.** The simulator exists so an agent can run the app, capture what the screen would show,
+  compare it against a reference and see its own mistakes. A person watching it is the secondary use.
 * **Specification first (MD3).** Work starts from what the thing must do. Stack, patterns and structure are
   settled by gates and by the agent, not in conversation.
 * **Stack open (MD6).** No language is committed. Rust, Go, Flutter, Python and anything else are candidates for

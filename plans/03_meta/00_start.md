@@ -34,7 +34,7 @@ No transcript of the video was found. The recaps below are secondary, and the re
 It is 47 skills, 23 of them one principle each, 23 playbooks, 2 subagents, and a dormant automation pack.
 Claude Code ports exist, for example `irg1008/cstack`, which reports around 2,700 tokens of session overhead.
 
-The parts that look load-bearing:
+The parts that carry the most weight:
 
 * **One entry point.** `/poteto-mode` matches the request to a playbook, copies that playbook's steps verbatim
   into a todo list so nothing is silently dropped, and calls the other skills as steps need them.
@@ -62,7 +62,7 @@ This repo is currently nine commits of planning and no code.
 
 Four days of plan folders, no source, no tests, no CI, no lint, no stack.
 Guardrails count: zero. Every technical decision so far was made by a person in conversation,
-which is exactly the thing the new direction wants to stop doing.
+which is what the new direction wants to stop doing.
 
 That is an unusually good starting position for this experiment. There is no legacy to protect,
 the stack is open, and the first real workload is a simulator whose output is an image,
@@ -116,8 +116,8 @@ What we have, checked 2026-09-16:
   via `/sandbox`, and dev containers or VMs sit above that. This is the cheap end, and it is a directory plus a
   boundary rather than a computer.
 
-The honest read for klide: her argument for a real computer is about verifying behaviour by driving the product.
-Our product is a simulator that emits frames, which is the one case where a directory is nearly enough, because the
+Applied to klide: her argument for a real computer is about verifying behaviour by driving the product.
+Our product is a simulator that emits frames, and a directory is nearly enough for that, because the
 evidence is a file rather than a screen someone has to look at. That makes worktrees adequate for longer here than
 they would be for a browser app, and it makes the cloud path worth trying for the runs that need isolation rather
 than as the default.
@@ -145,7 +145,7 @@ Taken from the framing above, not re-derived.
   outside it because the box has no credentials for them, so the limit is enforced by the machine rather than by an
   instruction an agent could talk itself out of (M4).
 * **MD10. The frame is the evidence.** Verification for klide is a rendered frame compared against a reference,
-  and the simulator exists to produce it (M7). This is the one lever worth building before anything else.
+  and the simulator exists to produce it (M7). It is the first lever to build.
 * **MD8. Start at one or two agents and earn more.** The workshop outline calls this the agent trust curve,
   micromanagement at one end and automated merging at the other, moved along slowly. Concurrency is the last dial
   to turn, not the first: one agent, occasionally two, while the meta interactions and the constraints are still
@@ -178,8 +178,8 @@ Numbered `M` for this folder, continuing across batches.
   already impossible from here.
   ANS: eventually everything that can be done without GitHub credentials. Editing, committing, branching,
   worktrees, running anything locally. Pushing, PRs and merges are outside the boundary because the box cannot
-  reach them, which makes the limit enforced rather than promised. "Eventually" is the operative word: the
-  permission grows as the runs earn it (MD8).
+  reach them, which makes the limit enforced rather than promised. The permission grows as the runs earn it (MD8),
+  so "eventually" is doing real work in that sentence.
 - M5: The review cadence, and its trigger. Every N sessions, weekly, or at each phase boundary.
   Recommended: at each phase boundary plus a standing weekly slot, because painful interactions are easiest
   to recall while they are recent.
