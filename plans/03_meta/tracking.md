@@ -16,6 +16,7 @@ The app being built alongside is tracked in [`../04_klide_app/00_start.md`](../0
 
 - The unsupervised boundary is whatever needs no GitHub credentials, which this box enforces by not having any (MD9).
 - The frame is the evidence, and the simulator exists to produce it (MD10).
+- A third outside source, the `/grill-me` interview, is spun off to [`../05_grill_me/00_start.md`](../05_grill_me/00_start.md) (MD11).
 
 ## Phases
 
@@ -44,3 +45,4 @@ Append-only. Newest at the bottom.
 - 2026-09-16 : reversed the enforcement decision from phase 2. The argument against a pre-commit hook was that it is bypassable, which only holds when CI runs, and CI has never run because this box has no GitHub credentials. Added `.githooks/pre-commit` calling the same `scripts/check.sh`, shared through `core.hooksPath` and installed by `scripts/install-hooks.sh`. Verified that a commit carrying a banned em dash is refused with no commit object written, and that a clean tree commits normally
 
 - 2026-09-16 : phase 1 done. A fresh session ran the four checks the phase was waiting on: `principles` and `deslopify` both appear in the skill list, `principles` invokes and returns its four rules; the repo instructions carry the Planning section and the mannered-writing paragraphs; `scripts/check.sh` passes cold on 32 files with no findings. Nothing was wrong, so the phase closed unchanged
+- 2026-09-17 : detour, no phase touched. Asked how aihero.dev's `/grill-me` would fit this repo's planning; found it fills the undocumented step before `00_start.md` and that its statelessness contradicts the reason the plan folders exist. Spun the reasoning and five open questions off to `05_grill_me/` as a draft, parked

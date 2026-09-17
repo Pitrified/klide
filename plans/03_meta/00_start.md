@@ -153,6 +153,11 @@ Taken from the framing above, not re-derived.
 * **MD7. Tracked development is bootstrap scaffolding.** It stays until the guardrails can carry the same load,
   and it is expected to change shape rather than be preserved.
 
+* **MD11. The interview front end is a spin-off, not a meta phase.** Porting aihero.dev's `/grill-me`
+  as the step that produces a `00_start.md` from a loose idea is tracked in
+  [`../05_grill_me/00_start.md`](../05_grill_me/00_start.md). It is a third outside source under M1 and
+  executable on its own, so nothing here waits on it.
+
 ## Open questions
 
 Numbered `M` for this folder, continuing across batches.
