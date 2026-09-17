@@ -168,6 +168,9 @@ Recorded as they came, since this is the phase that exists to collect them.
   The panel and the displayed canvas are separate now, which also makes the viewer correct on a
   HiDPI screen: it renders into as many real pixels as the display has, rather than handing CSS a
   canvas to stretch.
+  Confirmed by the person who reported it: clean at 1:1, and much better at true size after the
+  alignment fix. Accepted provisionally rather than closed, because the question it stands in for is
+  what the text looks like on a 300 ppi panel, and that cannot be answered until there is one.
 - **True size was not true.** It rounded to a whole-number scale, which is a tkinter limitation
   carried over without noticing: photo images only subsample by integers and CSS has no such rule.
   On a monitor calibrated to 110 ppi it showed the 107 mm panel at 97 mm, nine per cent small, in
@@ -187,6 +190,22 @@ Recorded as they came, since this is the phase that exists to collect them.
   no dependencies.
   Worth keeping as a lesson rather than a fix: this was designed on a machine where the viewer and
   the browser were the same host, so the link was free and the size of a frame never showed up.
+
+## Where this phase stands
+
+Five things came out of the first sitting and all five are fixed: the buttons that looked dead, the
+four-second delay, true size being nine per cent small, the jagged text, and the density box not
+re-fitting.
+
+Every one of them is about the instrument rather than about the thing it was built to judge. The
+viewer now works; nothing has yet been said about whether the design it displays is any good. So
+the "done when" of this phase is not met, and it would be a mistake to mark it met on the strength
+of a working viewer, since that is exactly the self-referential move AD9 warns about.
+
+What is still wanted, in the order it matters: whether the body text is comfortable at 107 mm,
+whether six turns is the right window, whether a collapsed tool call says enough to be useful, and
+whether the panel sitting two-thirds empty whenever recent turns are short shell calls is a waste of
+screen or a rest for the eye.
 
 ## Out of scope
 
