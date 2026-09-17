@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.13"
+# requires-python = ">=3.13,<3.14"
 # dependencies = []
 # ///
 """klide viewer: a window onto the simulator, running wherever you have a screen.
@@ -12,12 +12,17 @@ is PEP 723 inline script metadata, so `uv run` fetches the interpreter and build
     uv run klide_viewer.py --host localhost --port 5000   # through ssh -L
     ./klide_viewer.py --host ...                          # the shebang runs uv for you
 
-`requires-python` is 3.13 and that is the point of it, not a formality. tkinter is in the standard
-library but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons differ: the 3.13
-builds carry Tcl/Tk 9.0 and work, while an earlier one resolved on another machine was linked
-against Tcl 8.6 with no 8.6 library files and died with `Can't find a usable init.tcl`. Asking for
-3.13 is what makes uv fetch a build whose Tk works, rather than whatever the machine happened to
-have lying about.
+`requires-python` names 3.13 and bounds it below 3.14, and both halves are doing work. tkinter is
+in the standard library but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons
+are not alike: the 3.13 builds carry Tcl/Tk 9.0 and run, while the 3.14 build resolved on another
+machine reported Tk 8.6 and died with `Can't find a usable init.tcl`, having searched for a library
+directory its own distribution does not contain.
+
+The upper bound is the part that was missing first time round. `>=3.13` alone is satisfied by 3.14,
+so uv took the newest it could and landed straight back on the broken one. This is a specific,
+dated observation about two builds rather than a rule about Python versions, and it is the kind of
+thing that comes back: if a future 3.13 build breaks the same way, the failure below says so and
+names the interpreter it used.
 
 `dependencies` is empty and should stay that way. The standard library and tkinter are the whole
 budget: this file has to be runnable by copying it to whatever machine currently has a screen.
@@ -418,11 +423,17 @@ def _explain_tk_failure(broken: tk.TclError) -> None:
             file=sys.stderr,
         )
         print(
-            "viewer: which means an interpreter older than the one this script asks for.",
+            "viewer: which is a property of the interpreter, not of this machine.",
             file=sys.stderr,
         )
-        print("viewer: run it through uv so the pinned Python is used:", file=sys.stderr)
-        print("viewer:   uv run klide_viewer.py --host ... --port ...", file=sys.stderr)
+        print(
+            "viewer: ask uv for one whose Tk works, and say so here if it does not:",
+            file=sys.stderr,
+        )
+        print(
+            "viewer:   uv run --python 3.13 klide_viewer.py --host ... --port ...",
+            file=sys.stderr,
+        )
         return
     print("viewer: there is no display to open a window on.", file=sys.stderr)
     print(

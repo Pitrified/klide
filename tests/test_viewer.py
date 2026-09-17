@@ -104,12 +104,16 @@ def test_the_viewer_asks_for_a_python_whose_tk_works() -> None:
     """The version is load-carrying, not a formality.
 
     tkinter is stdlib but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons are
-    not alike. A build resolved on another machine was linked against Tcl 8.6 with no 8.6 library
-    files and died with `Can't find a usable init.tcl`; the 3.13 builds carry Tcl/Tk 9.0 and run.
-    Lowering this floor would let uv pick the broken kind again, on a machine nobody is testing on.
+    not alike. The 3.13 builds carry Tcl/Tk 9.0 and run; the 3.14 build resolved on another machine
+    reported Tk 8.6 and died with `Can't find a usable init.tcl`. Widening this range at either end
+    lets uv pick a broken one again, on a machine nobody is testing on.
     """
     requires = _script_metadata()["requires-python"]
-    assert requires == ">=3.13", f"lowering this reintroduces the broken-Tk builds, got {requires}"
+    assert requires == ">=3.13,<3.14", (
+        f"both halves matter and this is now {requires!r}: the floor keeps uv off the older broken "
+        "builds, and the ceiling keeps it off 3.14, which reported Tk 8.6 and could not find its "
+        "own Tcl library. Leaving the range open took the newest available and landed back on it."
+    )
 
 
 def test_the_viewer_declares_no_dependencies_and_should_not_gain_any() -> None:

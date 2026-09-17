@@ -29,11 +29,14 @@ None, beyond having [uv](https://docs.astral.sh/uv/). The file carries
 [PEP 723](https://peps.python.org/pep-0723/) inline script metadata, so `uv run` reads the block at
 the top, fetches the interpreter it names and builds the environment.
 
-`requires-python` is 3.13, and that version is doing real work. tkinter is in the standard library
-but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons are not alike: the 3.13
-builds carry Tcl/Tk 9.0 and run, while an earlier build resolved on another machine was linked
-against Tcl 8.6 with no 8.6 library files and failed with `Can't find a usable init.tcl`. Naming
-3.13 is what makes uv fetch a working one instead of whatever was already on the machine.
+`requires-python` is `>=3.13,<3.14`, and both halves are doing work. tkinter is in the standard
+library but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons are not alike:
+the 3.13 builds carry Tcl/Tk 9.0 and run, while the 3.14 build resolved on another machine reported
+Tk 8.6 and failed with `Can't find a usable init.tcl`, searching for a library directory its own
+distribution does not contain.
+
+The upper bound is the part that was missing at first. `>=3.13` alone is satisfied by 3.14, so uv
+took the newest it could and landed straight back on the broken build.
 
 If it still cannot open a window it says which of the two problems it is, because the remedies are
 unrelated: a missing Tcl library means the wrong interpreter was used, and a missing display means
