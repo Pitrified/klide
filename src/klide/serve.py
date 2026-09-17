@@ -19,6 +19,7 @@ transcript poll:
 from __future__ import annotations
 
 import queue
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -116,6 +117,36 @@ def apply_event(event: InputEvent, state: LiveState) -> bool:
     return False
 
 
+def describe(event: InputEvent) -> str:
+    """An input event in words, for the log."""
+    if event.kind is EventKind.BUTTON:
+        return f"button {event.button.name.lower()}"
+    if event.kind is EventKind.SWIPE:
+        return f"swipe {event.direction.name.lower()}"
+    if event.kind is EventKind.TAP:
+        return f"tap at ({event.x},{event.y})"
+    return str(event.kind)
+
+
+def explain(moved: bool, state: LiveState) -> str:
+    """Why a press did nothing, when it did nothing.
+
+    A press that is correctly ignored and a press that never arrived look the same on the screen,
+    which is exactly what happened the first time someone sat with the viewer: the page buttons
+    appeared dead, and the reason was a transcript with no page to turn to.
+    """
+    if moved:
+        return f"redraw, now {state.offset} turns back of {len(state.turns)}"
+    if state.offset == 0 and len(state.turns) <= state.window:
+        return (
+            f"nothing to page to: {len(state.turns)} turns fit in a window of {state.window},"
+            " so there is no history behind this screen"
+        )
+    if state.offset == 0:
+        return f"already at the live tail of {len(state.turns)} turns"
+    return f"already at the oldest of {len(state.turns)} turns"
+
+
 def title_for(state: LiveState) -> str:
     """What the header says. Named so a test can ask without rendering a panel.
 
@@ -191,7 +222,13 @@ def run(
                 event = inbox.get_nowait()
                 if event is None:
                     return state
-                redraw = apply_event(event, state) or redraw
+                moved = apply_event(event, state)
+                print(
+                    f"serve: {describe(event)} -> {explain(moved, state)}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                redraw = moved or redraw
         except queue.Empty:
             pass
 

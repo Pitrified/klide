@@ -152,8 +152,9 @@ def _serve(path: Path, panel: Panel, metrics: Metrics, args: argparse.Namespace)
     """Wait for a viewer and stream the session to it."""
     where = f"{args.bind}:{args.port}"
     print(f"live: waiting for a viewer on {where} (up to {args.wait:.0f}s)")
-    print("live: on the machine with a screen, run")
-    print(f"live:   python3 klide_viewer.py --host <this host> --port {args.port}")
+    print("live: in another terminal on this machine, run")
+    print(f"live:   uv run viewer/klide_viewer.py --port {args.port}")
+    print("live: then open the URL it prints, forwarding that port if you are elsewhere")
     try:
         with serve((args.bind, args.port), timeout=args.wait) as link:
             print("live: viewer connected")

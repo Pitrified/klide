@@ -82,6 +82,18 @@ BTN_NONE, BTN_PAGE_BACK, BTN_PAGE_FORWARD = 0, 1, 2
 DRAG_THRESHOLD_PX = 40
 
 
+def log(line: str) -> None:
+    """Say what just happened, on stderr, unbuffered.
+
+    The viewer is an instrument, so it says what it did rather than leaving someone to infer it
+    from whether the screen moved. The first version printed nothing per event, and when a button
+    appeared to do nothing there was no way to tell where the event had stopped: in the browser, in
+    this process, or at the host. All three looked identical, and two of the three log files were
+    empty because the little that was printed went to a buffered stdout.
+    """
+    print(f"viewer: {line}", file=sys.stderr, flush=True)
+
+
 class ProtocolError(ValueError):
     """The bytes on the wire are not a message this viewer understands."""
 
@@ -250,18 +262,22 @@ class Bridge:
         with self.lock:
             outbox.put(as_event(self.screen.whole()))
             self.subscribers.add(outbox)
+            log(f"a browser is watching, {len(self.subscribers)} now")
         return outbox
 
     def unsubscribe(self, outbox: queue.Queue[bytes | None]) -> None:
         with self.lock:
             self.subscribers.discard(outbox)
+            log(f"a browser stopped watching, {len(self.subscribers)} left")
 
-    def send(self, payload: bytes) -> None:
+    def send(self, payload: bytes, what: str) -> None:
         """An input event, back to the host."""
         try:
             self.sock.sendall(payload)
         except OSError as broken:
             self._finish(str(broken))
+            return
+        log(f"sent {what} to the host, {len(payload)} bytes")
 
     def _read(self) -> None:
         incoming = bytearray()
@@ -288,6 +304,10 @@ class Bridge:
             event = as_event(patch)
             for outbox in self.subscribers:
                 outbox.put(event)
+            log(
+                f"frame {patch.width}x{patch.height} at ({patch.x},{patch.y}) {patch.waveform}"
+                f" to {len(self.subscribers)} watching"
+            )
 
     def _finish(self, why: str) -> None:
         with self.lock:
@@ -296,7 +316,7 @@ class Bridge:
             self.gone = why
             for outbox in self.subscribers:
                 outbox.put(None)
-        print(f"viewer: host disconnected: {why}", file=sys.stderr)
+        log(f"host disconnected: {why}")
 
 
 PAGE = """<!doctype html>
@@ -352,11 +372,13 @@ canvas.width = CONFIG.width;
 canvas.height = CONFIG.height;
 
 let scale = 3;
+let trueSize = false;
 // On by default. A redraw then takes the hundreds of milliseconds a real panel claims, which is
 // what makes a design that redraws too often feel as bad here as it would on the device. The
 // switch is there because clicking between views to check a layout wants the fast version (V2).
 let honest = true;
 let lastMode = "-";
+let sent = "nothing sent yet";
 let monitorPpi = Number(localStorage.getItem("klide.ppi")) || Math.round(96 * devicePixelRatio);
 document.getElementById("ppi").value = monitorPpi;
 
@@ -411,7 +433,7 @@ function showStatus() {
     + ` (${mm.toFixed(0)} mm wide)`
     + `   shown at ${shown.toFixed(0)} ppi on an assumed ${monitorPpi} ppi monitor`
     + `   refresh ${lastMode}${claimed ? " " + claimed + "ms claimed" : ""}`
-    + `   ${honest ? "honest" : "fast"}`;
+    + `   ${honest ? "honest" : "fast"}   ${sent}`;
 }
 
 function setRuler() {
@@ -420,18 +442,21 @@ function setRuler() {
 }
 
 for (const button of document.querySelectorAll("button[data-scale]")) {
-  button.onclick = () => { scale = Number(button.dataset.scale); resize(); };
+  button.onclick = () => { trueSize = false; scale = Number(button.dataset.scale); resize(); };
 }
-document.getElementById("true-size").onclick = () => {
+function fitTrueSize() {
   // Only whole-number downscaling looks right, so this lands near the true size rather than on it,
   // and the status line says what it actually achieved.
+  trueSize = true;
   scale = Math.max(1, Math.round(CONFIG.ppi / (monitorPpi / devicePixelRatio)));
   resize();
-};
+}
+document.getElementById("true-size").onclick = fitTrueSize;
 document.getElementById("ppi").oninput = (event) => {
   monitorPpi = Number(event.target.value) || monitorPpi;
   localStorage.setItem("klide.ppi", monitorPpi);
   setRuler();
+  if (trueSize) fitTrueSize();  // the number is what true size means, so re-fit rather than drift
   showStatus();
 };
 const honestButton = document.getElementById("honest");
@@ -448,7 +473,14 @@ document.getElementById("back").onclick = () => send({kind: "button", button: "b
 document.getElementById("forward").onclick = () => send({kind: "button", button: "forward"});
 
 function send(event) {
-  fetch("input", {method: "POST", body: JSON.stringify(event)});
+  const what = event.kind + (event.button ? " " + event.button : "")
+             + (event.direction ? " " + event.direction : "");
+  fetch("input", {method: "POST", body: JSON.stringify(event)})
+    .then((response) => {
+      sent = response.ok ? "sent " + what : "input refused: " + response.status + " " + what;
+      showStatus();
+    })
+    .catch((failure) => { sent = "input failed: " + failure; showStatus(); });
 }
 
 // Panel coordinates, not page ones: the canvas is drawn at whatever scale is chosen.
@@ -522,6 +554,18 @@ def input_from_json(payload: dict[str, Any]) -> bytes:
     raise ProtocolError(f"unknown event kind {kind!r}")
 
 
+def describe(payload: dict[str, Any]) -> str:
+    """An input event in words, for the log."""
+    kind = payload.get("kind")
+    if kind == "tap":
+        return f"tap at ({payload.get('x')},{payload.get('y')})"
+    if kind == "swipe":
+        return f"swipe {payload.get('direction')}"
+    if kind == "button":
+        return f"button {payload.get('button')}"
+    return str(kind)
+
+
 def page_for(width: int, height: int, ppi: int) -> bytes:
     config = {
         "width": width,
@@ -551,8 +595,10 @@ def handler_for(bridge: Bridge, page: bytes) -> type[BaseHTTPRequestHandler]:
                 return
             length = int(self.headers.get("Content-Length", 0))
             try:
-                bridge.send(input_from_json(json.loads(self.rfile.read(length))))
+                payload = json.loads(self.rfile.read(length))
+                bridge.send(input_from_json(payload), describe(payload))
             except (ProtocolError, ValueError, KeyError) as bad:
+                log(f"refused an event from the browser: {bad}")
                 self.send_error(400, str(bad))
                 return
             self._body(b"", "text/plain")
@@ -586,7 +632,15 @@ def handler_for(bridge: Bridge, page: bytes) -> type[BaseHTTPRequestHandler]:
                 bridge.unsubscribe(outbox)
 
         def log_message(self, fmt: str, *args: object) -> None:
-            pass  # one line per frame would bury anything worth reading
+            """Every request the browser makes, except the frame stream.
+
+            The stream is one long-lived request and says so when it opens and closes, so logging
+            it here would add nothing. Everything else is logged because the question that could
+            not be answered the first time someone used this was whether a click had reached the
+            server at all.
+            """
+            if "/frames" not in str(args[0] if args else ""):
+                log(f"http {fmt % args}")
 
     return Handler
 
@@ -606,25 +660,23 @@ def main(argv: list[str] | None = None) -> int:
     try:
         sock.connect((args.host, args.port))
     except OSError as refused:
-        print(f"viewer: cannot reach {args.host}:{args.port}: {refused}", file=sys.stderr)
-        print("viewer: is the klide host running, and is the port forwarded?", file=sys.stderr)
+        log(f"cannot reach {args.host}:{args.port}: {refused}")
+        log("is the klide host running, and is the port forwarded?")
         return 1
-    print(f"viewer: connected to {args.host}:{args.port}")
+    log(f"connected to {args.host}:{args.port}")
 
     bridge = Bridge(sock, args.width, args.height)
     server = ThreadingHTTPServer(
         (args.bind, args.http_port),
         handler_for(bridge, page_for(args.width, args.height, args.ppi)),
     )
-    print(f"viewer: open http://{args.bind}:{args.http_port}/")
+    log(f"open http://{args.bind}:{args.http_port}/")
     if args.bind == "127.0.0.1":
-        print(
-            f"viewer: from another machine, ssh -L {args.http_port}:localhost:{args.http_port} here"
-        )
+        log(f"from another machine, ssh -L {args.http_port}:localhost:{args.http_port} here")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nviewer: stopped")
+        log("stopped")
     finally:
         sock.close()
     return 0
