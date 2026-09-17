@@ -69,6 +69,53 @@ is executable, without naming a Python at all.
 To check whether a host allows forwarding at all, without root on it, see the probe in
 [the phase plan](../plans/04_klide_app/05_viewer.md).
 
+## Driving it from a script
+
+[`../scripts/drive.py`](../scripts/drive.py) opens the page in a real browser and operates it, so
+the page can be used rather than described. It is how the JavaScript gets exercised at all on a
+headless host.
+
+One-time setup, no elevation needed:
+
+    uv run playwright install chromium firefox
+
+Then:
+
+    uv run python scripts/drive.py --do "shot before" --do "click #back" --do "wait 2" --do "shot after"
+
+Actions are `click <selector>`, `key <name>`, `tap <x> <y>` and `drag <x0> <y0> <x1> <y1>` in panel
+coordinates, `wait <seconds>`, `shot <name>`, `text <selector>` and `eval <expression>`. It starts
+its own host and viewer on ports of its own, or drives one already running with `--url`. `--browser
+firefox` drives the other engine, and `--headed` shows the window.
+
+Everything lands in one stream in time order, which is the point: the browser console, the viewer's
+log and the host's log are otherwise three places.
+
+    browser  klide: sending button back
+    viewer:  http "POST /input HTTP/1.1" 200 -
+    host:    serve: button page_back -> redraw, now 6 turns back of 1401
+    viewer:  frame 1264x773 at (0,58) gl16 to 1 watching
+    browser  klide: painted 1264x773 at (0,58) gl16, 0 waiting
+
+Screenshots go to `build/browser/`, both the whole page and the panel alone. Nothing is compared
+against a reference. This is not a gate and `scripts/check.sh` does not run it: what it checks is
+whether a person can use the thing, and that judgement is a person's.
+
+## What the page reports
+
+The page says what it is doing, to the browser console prefixed `klide:` and to the viewer's own
+log as `browser: ...`. So the whole sequence is readable without opening devtools, including while
+someone else is driving the page.
+
+Uncaught errors and rejected promises are reported the same way. That matters more than it sounds:
+a JavaScript error early in the page leaves every handler after it unattached, and the result looks
+like a page whose buttons merely do nothing.
+
+The status line also reports the last input and what became of it, which distinguishes the three
+cases that otherwise look identical on screen: `sent button back`, `input failed` when the request
+never left the browser, and `button forward: no change` when the host received it and correctly did
+nothing.
+
 ## What the controls do
 
 | control | effect |

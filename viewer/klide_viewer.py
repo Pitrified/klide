@@ -77,6 +77,11 @@ TAP, SWIPE, BUTTON = 1, 2, 3
 DIR_NONE, DIR_LEFT, DIR_RIGHT, DIR_UP, DIR_DOWN = 0, 1, 2, 3, 4
 BTN_NONE, BTN_PAGE_BACK, BTN_PAGE_FORWARD = 0, 1, 2
 
+#: How many lines a second the page may forward to this log before it starts dropping them. A
+#: person clicking cannot reach this; a loop can, and a loop in the logging is what would make the
+#: log useless exactly when it is needed.
+LOG_PER_SECOND = 20
+
 #: A drag shorter than this is a tap. The panel cannot track a finger continuously, so a drag is
 #: one discrete step settled on release rather than anything smooth (A8). In panel pixels.
 DRAG_THRESHOLD_PX = 40
@@ -366,6 +371,39 @@ PAGE = """<!doctype html>
 <div id="status">connecting</div>
 <script>
 const CONFIG = __CONFIG__;
+
+// Everything the page does worth knowing about goes through here, to two places at once. The
+// console is for a person with devtools open and for a driving browser, which reads it directly.
+// The POST is so the same line lands in the viewer's own log next to the host's, which is what
+// makes this readable without devtools and readable by me while someone else drives the page.
+//
+// Both guards exist because a log that floods is a log nobody reads. The forwarding is capped, and
+// says so once when it stops rather than going quiet; and a failure to forward is reported to the
+// console only, since reporting it anywhere else is the loop this is avoiding.
+let saidThisSecond = 0;
+let saidSecond = 0;
+function say(line) {
+  console.log("klide: " + line);
+  const now = Math.floor(Date.now() / 1000);
+  if (now !== saidSecond) { saidSecond = now; saidThisSecond = 0; }
+  saidThisSecond++;
+  if (saidThisSecond === CONFIG.logPerSecond) line = line + " (further lines this second dropped)";
+  if (saidThisSecond > CONFIG.logPerSecond) return;
+  fetch("log", {method: "POST", body: line})
+    .then((response) => response.text())  // drained, or the browser reports the request aborted
+    .catch((failure) => console.log("klide: could not forward a log line: " + failure));
+}
+
+// Before anything else, so a failure in the code below is reported rather than leaving the page
+// merely inert. A thrown error stops the rest of this script, which unattaches every handler after
+// the throw and looks exactly like a page whose buttons do nothing.
+addEventListener("error", (event) => {
+  say(`page error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`);
+});
+addEventListener("unhandledrejection", (event) => {
+  say(`unhandled rejection: ${event.reason}`);
+});
+
 const canvas = document.getElementById("panel");
 const ctx = canvas.getContext("2d");
 canvas.width = CONFIG.width;
@@ -387,6 +425,7 @@ document.getElementById("ppi").value = monitorPpi;
 // once, which is the thing it exists to prevent.
 const pending = [];
 let busy = false;
+let painted = 0;
 
 function bytesOf(b64) {
   const raw = atob(b64);
@@ -405,7 +444,10 @@ function paint(patch) {
     data[o] = grey; data[o + 1] = grey; data[o + 2] = grey; data[o + 3] = 255;
   }
   ctx.putImageData(image, patch.x, patch.y);
+  painted++;
   lastMode = patch.mode;
+  say(`painted ${patch.w}x${patch.h} at (${patch.x},${patch.y}) ${patch.mode},`
+      + ` ${pending.length} waiting`);
   showStatus();
 }
 
@@ -442,13 +484,19 @@ function setRuler() {
 }
 
 for (const button of document.querySelectorAll("button[data-scale]")) {
-  button.onclick = () => { trueSize = false; scale = Number(button.dataset.scale); resize(); };
+  button.onclick = () => {
+    trueSize = false;
+    scale = Number(button.dataset.scale);
+    say(`scale 1:${scale}`);
+    resize();
+  };
 }
 function fitTrueSize() {
   // Only whole-number downscaling looks right, so this lands near the true size rather than on it,
   // and the status line says what it actually achieved.
   trueSize = true;
   scale = Math.max(1, Math.round(CONFIG.ppi / (monitorPpi / devicePixelRatio)));
+  say(`true size at an assumed ${monitorPpi} ppi lands on 1:${scale}`);
   resize();
 }
 document.getElementById("true-size").onclick = fitTrueSize;
@@ -463,6 +511,7 @@ const honestButton = document.getElementById("honest");
 function toggleHonest() {
   honest = !honest;
   honestButton.classList.toggle("on", honest);
+  say(honest ? "honest refresh on" : "honest refresh off, drawing as fast as it arrives");
   showStatus();
   step();
 }
@@ -475,12 +524,36 @@ document.getElementById("forward").onclick = () => send({kind: "button", button:
 function send(event) {
   const what = event.kind + (event.button ? " " + event.button : "")
              + (event.direction ? " " + event.direction : "");
+  say(`sending ${what}`);
+  const before = painted;
   fetch("input", {method: "POST", body: JSON.stringify(event)})
-    .then((response) => {
+    .then(async (response) => {
+      await response.text();  // drained, or the browser reports the request aborted
       sent = response.ok ? "sent " + what : "input refused: " + response.status + " " + what;
+      say(`${what} answered ${response.status}`);
       showStatus();
+      if (response.ok) watchForChange(what, before);
     })
-    .catch((failure) => { sent = "input failed: " + failure; showStatus(); });
+    .catch((failure) => {
+      sent = "input failed: " + failure;
+      say(`${what} never left the browser: ${failure}`);
+      showStatus();
+    });
+}
+
+// A press the host correctly ignores and a press that never arrived look identical on the panel:
+// nothing moves either way. Pressing page-forward at the live tail is the ordinary case of the
+// first, and it is what made the buttons look dead. So when a press draws nothing, say so.
+//
+// The wait has to clear the slowest legitimate redraw, which is the host coalescing an update plus
+// an honest refresh playing out the mode it claims.
+function watchForChange(what, before) {
+  setTimeout(() => {
+    if (painted !== before) return;
+    sent = `${what}: no change`;
+    say(`${what} changed nothing on the panel`);
+    showStatus();
+  }, 1200 + (honest ? CONFIG.claimed.gc16 : 0));
 }
 
 // Panel coordinates, not page ones: the canvas is drawn at whatever scale is chosen.
@@ -519,14 +592,18 @@ addEventListener("keydown", (event) => {
 });
 
 const stream = new EventSource("frames");
+stream.onopen = () => say("frame stream open");
 stream.onmessage = (event) => { pending.push(JSON.parse(event.data)); step(); };
 stream.onerror = () => {
   document.getElementById("status").textContent = "host disconnected, or the viewer stopped";
+  say("frame stream closed");
   stream.close();
 };
 
 resize();
 setRuler();
+say(`ready, panel ${CONFIG.width}x${CONFIG.height} at 1:${scale},`
+    + ` assuming a ${monitorPpi} ppi monitor at devicePixelRatio ${devicePixelRatio}`);
 </script>
 """
 
@@ -573,6 +650,7 @@ def page_for(width: int, height: int, ppi: int) -> bytes:
         "ppi": ppi,
         "claimed": CLAIMED_MS,
         "dragThreshold": DRAG_THRESHOLD_PX,
+        "logPerSecond": LOG_PER_SECOND,
     }
     return PAGE.replace("__CONFIG__", json.dumps(config)).encode("utf-8")
 
@@ -590,6 +668,9 @@ def handler_for(bridge: Bridge, page: bytes) -> type[BaseHTTPRequestHandler]:
                 self.send_error(404)
 
         def do_POST(self) -> None:  # noqa: N802 - the name is http.server's
+            if self.path == "/log":
+                self._from_the_page()
+                return
             if self.path != "/input":
                 self.send_error(404)
                 return
@@ -601,6 +682,17 @@ def handler_for(bridge: Bridge, page: bytes) -> type[BaseHTTPRequestHandler]:
                 log(f"refused an event from the browser: {bad}")
                 self.send_error(400, str(bad))
                 return
+            self._body(b"", "text/plain")
+
+        def _from_the_page(self) -> None:
+            """One log line from the browser, into the same log as everything else.
+
+            Kept to one line and one length limit, because this is the one route whose content is
+            written by a page rather than by this process.
+            """
+            length = min(int(self.headers.get("Content-Length", 0)), 2000)
+            line = self.rfile.read(length).decode("utf-8", "replace").replace("\n", " ")
+            log(f"browser: {line}")
             self._body(b"", "text/plain")
 
         def _body(self, payload: bytes, content_type: str) -> None:
@@ -639,7 +731,10 @@ def handler_for(bridge: Bridge, page: bytes) -> type[BaseHTTPRequestHandler]:
             not be answered the first time someone used this was whether a click had reached the
             server at all.
             """
-            if "/frames" not in str(args[0] if args else ""):
+            request = str(args[0] if args else "")
+            # /frames is one long-lived request that announces itself when it opens and closes, and
+            # /log has already written the line it carried. Logging either here would double them.
+            if "/frames" not in request and "/log" not in request:
                 log(f"http {fmt % args}")
 
     return Handler

@@ -122,6 +122,35 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
 - Feed it from `klide-live` so the content is a real session rather than a fixture.
 - Collect what the first sitting turns up, in one file, separating what is a bug from what is a
   preference from what is a design fault.
+- A way to drive the page from a script, added 2026-09-17 after the first sitting. Not in the
+  original plan and worth saying why it was added. The viewer's JavaScript had never run anywhere
+  its author could see it, because this host has no browser, so the first report from a person was
+  "the page buttons do not do anything" and there was no way to tell where between the click and
+  the socket the event stopped. `scripts/drive.py` opens the page in Chromium or Firefox, operates
+  it, and folds the browser console, the viewer's log and the host's log into one stream in time
+  order. The page reports itself into that stream, so the same sequence is readable when a person
+  is driving instead.
+
+## What the first sitting found
+
+Recorded as they came, since this is the phase that exists to collect them.
+
+- **The page-turn buttons looked dead, and one of them was telling the truth.** Pressing page
+  forward at the live tail is correctly ignored by the host, and the page showed exactly what a
+  broken button shows: nothing. A press the host refuses and a press that never arrived were
+  indistinguishable on screen. The status line now says `button forward: no change` when a press
+  draws nothing, and the host's log says why. Reproduced in both engines before and after.
+- **The other page button works in Chromium and Firefox**, driven headless through the same path a
+  person clicks, as do the arrow keys, tap and swipe. So the original report is explained by the
+  case above rather than by a bug in the input path, which is what three rounds of server-side
+  probing had failed to establish.
+- **Changing the assumed monitor density did not re-fit the panel.** It moved the calibration bar
+  and left the panel at a size the new number contradicted. Fixed: the number is what true size
+  means, so changing it re-fits.
+- **`klide-live --serve` exits when the viewer disconnects**, so restarting the viewer kills the
+  host. Reloading the browser is fine, since that is only the event stream. Not yet fixed.
+- **A browser cannot measure the monitor.** Noted under V4 rather than here, because it is a
+  consequence of the toolkit rather than something the sitting turned up.
 
 ## Out of scope
 
@@ -133,6 +162,21 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
 
 ## Open questions
 
+- V5: Whether driving the browser should become a gate.
+  Opened 2026-09-17. `scripts/drive.py` is deliberately an instrument, not a gate: it is started by
+  hand, `scripts/check.sh` does not run it and CI does not either. That was chosen rather than
+  defaulted, because a gate needs a browser downloaded before anyone can commit, and because what
+  the harness checks is whether a person can use the thing, which has no reference frame.
+  The gate version, if it is ever wanted, is already designed and should not be re-derived: drive a
+  fixed transcript through a scripted sequence, read the canvas back with `toDataURL`, and assert
+  it equals the frame klide sent, exactly, at 4-bit depth. That needs no golden file, because
+  klide's own output is the reference. It is the same convergence property the streaming tests
+  already hold the simulator to, and it would catch the 4bpp-to-ImageData path, patch placement,
+  and any JavaScript error that stops a redraw.
+  What it would not catch is a design that was wrong when it was written, which is the thing this
+  phase exists for and the reason AD9 is not closed by any amount of automation.
+  Deliberately not decided until the harness has been used enough to know whether it is stable
+  enough to block a commit.
 - ~~V1: What the viewer is written in.~~ ANSWERED 2026-09-16: Python and tkinter, under WSLg,
   confirmed working on the target machine. A browser page was the alternative and pulls in more for
   no gain, now that nothing has to be served to a remote display.
