@@ -51,8 +51,10 @@ import base64
 import json
 import queue
 import socket
+import struct
 import sys
 import threading
+import zlib
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -226,14 +228,45 @@ class Screen:
         return Patch(0, 0, self.width, self.height, waveform, 0, bytes(self.levels))
 
 
-def as_event(patch: Patch) -> bytes:
-    """One patch as a server-sent event.
+#: 4-bit levels widened to 8-bit samples. A `bytes.translate` table rather than a loop, because
+#: this runs over two million pixels per full frame and a Python loop there is the difference
+#: between a few milliseconds and a few hundred. Multiplying by 17 is exact: 15 becomes 255.
+WIDEN = bytes(min(255, value * 17) for value in range(256))
 
-    Levels go over as one byte per pixel rather than the packed two-per-byte of the wire format.
-    That doubles a full screen to about 2 MB, which costs something once per page load and nothing
-    afterwards, since every later patch is a small rectangle. The trade is that the browser does no
-    unpacking: the bytes are already what `ImageData` wants, give or take the multiply.
+
+def to_png(levels: bytes, width: int, height: int) -> bytes:
+    """An 8-bit greyscale PNG, written with the standard library and nothing else.
+
+    Why a PNG rather than the pixels: a panel of rendered text is mostly one colour and deflates
+    about forty-fold, and this goes over a link that may be an SSH tunnel to another machine. The
+    first version sent one byte per pixel base64-encoded, which is 2.8 MB for a full screen and took
+    a person several seconds per press. The same screen is about 65 KB like this.
+
+    A browser also decodes a PNG natively, which replaces a two-million-iteration loop over
+    `ImageData` in the page with one `drawImage`.
+
+    PNG is written by hand because the viewer ships as one file with no dependencies, and the format
+    is four chunks: a signature, a header, the deflated scanlines, and an end marker. Each scanline
+    carries a leading filter byte, zero here, meaning the row is stored as it is.
     """
+    wide = levels.translate(WIDEN)
+    raw = b"".join(b"\x00" + wide[row * width : (row + 1) * width] for row in range(height))
+    header = struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _chunk(b"IHDR", header)
+        + _chunk(b"IDAT", zlib.compress(raw, 6))
+        + _chunk(b"IEND", b"")
+    )
+
+
+def _chunk(kind: bytes, data: bytes) -> bytes:
+    """Length, type, data, and a CRC over the type and data. The whole of PNG's framing."""
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+
+def as_event(patch: Patch) -> bytes:
+    """One patch as a server-sent event: where to put it, how it refreshes, and a PNG of it."""
     payload = {
         "x": patch.x,
         "y": patch.y,
@@ -241,7 +274,7 @@ def as_event(patch: Patch) -> bytes:
         "h": patch.height,
         "mode": patch.waveform,
         "page": patch.page_id,
-        "levels": base64.b64encode(patch.levels).decode("ascii"),
+        "png": base64.b64encode(to_png(patch.levels, patch.width, patch.height)).decode("ascii"),
     }
     return b"data: " + json.dumps(payload).encode("ascii") + b"\n\n"
 
@@ -427,23 +460,19 @@ const pending = [];
 let busy = false;
 let painted = 0;
 
-function bytesOf(b64) {
-  const raw = atob(b64);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
+function decode(b64) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("the frame png would not decode"));
+    image.src = "data:image/png;base64," + b64;
+  });
 }
 
-function paint(patch) {
-  const levels = bytesOf(patch.levels);
-  const image = ctx.createImageData(patch.w, patch.h);
-  const data = image.data;
-  for (let i = 0; i < levels.length; i++) {
-    const grey = levels[i] * 17;  // 0-15 spread over 0-255, exactly
-    const o = i * 4;
-    data[o] = grey; data[o + 1] = grey; data[o + 2] = grey; data[o + 3] = 255;
-  }
-  ctx.putImageData(image, patch.x, patch.y);
+async function paint(patch) {
+  // drawImage rather than a loop over ImageData: the frame arrives as a PNG, so the decoding is
+  // the browser's and the page does no per-pixel work at all.
+  ctx.drawImage(await decode(patch.png), patch.x, patch.y);
   painted++;
   lastMode = patch.mode;
   say(`painted ${patch.w}x${patch.h} at (${patch.x},${patch.y}) ${patch.mode},`
@@ -451,13 +480,29 @@ function paint(patch) {
   showStatus();
 }
 
-function step() {
-  if (busy || pending.length === 0) return;
-  const patch = pending.shift();
-  paint(patch);
-  if (!honest) { step(); return; }
-  busy = true;
-  setTimeout(() => { busy = false; step(); }, CONFIG.claimed[patch.mode] || 0);
+// `drawing` and `busy` are different waits and both are needed. `drawing` covers decoding a PNG,
+// which is asynchronous and must not overlap itself or patches would land out of order. `busy` is
+// the refresh the panel claims, which is a deliberate delay rather than work.
+let drawing = false;
+async function step() {
+  if (drawing || busy || pending.length === 0) return;
+  drawing = true;
+  let patch;
+  try {
+    patch = pending.shift();
+    await paint(patch);
+  } catch (failure) {
+    say(`could not paint a frame: ${failure}`);
+    return;
+  } finally {
+    drawing = false;
+  }
+  if (honest) {
+    busy = true;
+    setTimeout(() => { busy = false; step(); }, CONFIG.claimed[patch.mode] || 0);
+    return;
+  }
+  step();
 }
 
 function resize() {
@@ -545,15 +590,18 @@ function send(event) {
 // nothing moves either way. Pressing page-forward at the live tail is the ordinary case of the
 // first, and it is what made the buttons look dead. So when a press draws nothing, say so.
 //
-// The wait has to clear the slowest legitimate redraw, which is the host coalescing an update plus
-// an honest refresh playing out the mode it claims.
+// The wait has to clear the slowest legitimate redraw: the host rendering and coalescing, the
+// frame crossing whatever link this is, and an honest refresh playing out the mode it claims.
+// Measured at about 0.35s end to end on one machine. Two seconds is headroom for a tunnel, and the
+// first version of this was wrong for exactly that reason: it was set at 1.2s while a full screen
+// was 2.8 MB, so it fired before every redraw rather than only when there was none.
 function watchForChange(what, before) {
   setTimeout(() => {
     if (painted !== before) return;
     sent = `${what}: no change`;
     say(`${what} changed nothing on the panel`);
     showStatus();
-  }, 1200 + (honest ? CONFIG.claimed.gc16 : 0));
+  }, 2000 + (honest ? CONFIG.claimed.gc16 : 0));
 }
 
 // Panel coordinates, not page ones: the canvas is drawn at whatever scale is chosen.

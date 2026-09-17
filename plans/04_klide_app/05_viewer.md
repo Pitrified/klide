@@ -151,6 +151,16 @@ Recorded as they came, since this is the phase that exists to collect them.
   host. Reloading the browser is fine, since that is only the event stream. Not yet fixed.
 - **A browser cannot measure the monitor.** Noted under V4 rather than here, because it is a
   consequence of the toolkit rather than something the sitting turned up.
+- **It was slow over a tunnel: four to five seconds a press.** Frames went to the browser as one
+  byte per pixel, base64-encoded, which is 2.8 MB for a full screen. Rendering, diffing and
+  encoding on the host total under 0.2s and a press-to-paint round trip here is about 0.35s, so all
+  of that time was the link. A panel of rendered text is mostly one colour: the same screen is
+  24 KB as a PNG, which the browser also decodes itself rather than the page looping over two
+  million pixels. Measured 117x smaller on one real screen, and 4.5s becomes 0.04s at 5 Mbit/s.
+  The viewer writes the PNG by hand out of `zlib` and `struct`, because it ships as one file with
+  no dependencies.
+  Worth keeping as a lesson rather than a fix: this was designed on a machine where the viewer and
+  the browser were the same host, so the link was free and the size of a frame never showed up.
 
 ## Out of scope
 
@@ -171,8 +181,8 @@ Recorded as they came, since this is the phase that exists to collect them.
   fixed transcript through a scripted sequence, read the canvas back with `toDataURL`, and assert
   it equals the frame klide sent, exactly, at 4-bit depth. That needs no golden file, because
   klide's own output is the reference. It is the same convergence property the streaming tests
-  already hold the simulator to, and it would catch the 4bpp-to-ImageData path, patch placement,
-  and any JavaScript error that stops a redraw.
+  already hold the simulator to, and it would catch the decoding path, patch placement, and any
+  JavaScript error that stops a redraw.
   What it would not catch is a design that was wrong when it was written, which is the thing this
   phase exists for and the reason AD9 is not closed by any amount of automation.
   Deliberately not decided until the harness has been used enough to know whether it is stable
@@ -206,7 +216,7 @@ Recorded as they came, since this is the phase that exists to collect them.
   the machine that has the screen. Pinning a fourth Python would have been the same move again. A
   browser removes the whole class: no toolkit, no `$DISPLAY`, no Tcl, no version to guess at.
   What it costs, now that it is written: an HTTP server and an event stream in the standard library,
-  the panel drawn into a canvas through `ImageData`, and one thing genuinely lost. A browser cannot
+  the panel drawn into a canvas, and one thing genuinely lost. A browser cannot
   measure the monitor, where tkinter could ask X. True physical size is therefore a number the
   person calibrates against a ruler, with a 100 mm bar on the page to do it with, and the status
   line says "assumed" until they do. That matters more here than elsewhere, because physical

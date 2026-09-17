@@ -101,6 +101,21 @@ Screenshots go to `build/browser/`, both the whole page and the panel alone. Not
 against a reference. This is not a gate and `scripts/check.sh` does not run it: what it checks is
 whether a person can use the thing, and that judgement is a person's.
 
+## What goes over the wire
+
+Each patch reaches the browser as a PNG: where to put it, how it refreshes, and the image. A panel
+of rendered text is mostly one colour, so a full screen is about 24 KB rather than the 2.8 MB it
+was when the pixels went over raw, and the browser decodes it rather than the page looping over two
+million of them.
+
+That matters because the browser may be on the other end of an SSH tunnel, which is the ordinary
+case here. It was four to five seconds a press before, and the host was never the reason: rendering,
+diffing and encoding total under 0.2 seconds.
+
+The viewer writes the PNG itself from `zlib` and `struct`, since it carries no dependencies. A test
+reads the result with Pillow, which is klide's and not the viewer's, so the bytes are checked
+against something that did not write them.
+
 ## What the page reports
 
 The page says what it is doing, to the browser console prefixed `klide:` and to the viewer's own

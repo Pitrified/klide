@@ -269,10 +269,9 @@ def test_streamed_patches_converge_on_the_same_screen_klide_would_show() -> None
 # What it hands the browser
 
 
-def test_a_patch_goes_over_as_its_levels_and_where_to_put_them() -> None:
-    # The page writes these bytes straight into an ImageData, so a change in shape here is a change
-    # in what gets drawn, with nothing in between to catch it.
-    import base64
+def test_a_patch_goes_over_as_a_png_and_where_to_put_it() -> None:
+    # The page hands this to the browser's own decoder, so a change in shape here is a change in
+    # what gets drawn, with nothing in between to catch it.
     import json
 
     event = viewer.as_event(viewer.Patch(3, 5, 2, 1, "gl16", 7, bytes([0, 15])))
@@ -280,7 +279,44 @@ def test_a_patch_goes_over_as_its_levels_and_where_to_put_them() -> None:
     payload = json.loads(event[len(b"data: ") :])
     assert (payload["x"], payload["y"], payload["w"], payload["h"]) == (3, 5, 2, 1)
     assert payload["mode"] == "gl16"
-    assert base64.b64decode(payload["levels"]) == bytes([0, 15])
+    assert base64.b64decode(payload["png"]).startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_the_png_the_viewer_writes_is_the_image_it_was_given() -> None:
+    """A PNG written by hand, read back by something that did not write it.
+
+    The viewer ships as one file and cannot import an imaging library, so it writes the four chunks
+    itself. Checking it with Pillow, which is klide's and not the viewer's, is the only way to know
+    the bytes are a PNG rather than something this file agrees with itself about.
+    """
+    import io
+
+    from PIL import Image
+
+    levels = bytes([0, 5, 10, 15, 15, 10, 5, 0])
+    data = viewer.to_png(levels, 4, 2)
+    read = Image.open(io.BytesIO(data))
+    assert read.mode == "L", "greyscale, or the browser is decoding something else"
+    assert read.size == (4, 2)
+    # 0-15 widened to 0-255 by multiplying by 17, which is exact at both ends.
+    assert list(read.getdata()) == [value * 17 for value in levels]
+
+
+def test_a_full_panel_png_is_small_enough_to_send_over_a_tunnel() -> None:
+    """The reason for the PNG at all, kept as a number that would notice a regression.
+
+    Frames were sent as one byte per pixel, base64-encoded: 2.8 MB for a full screen, which took
+    several seconds per press for someone reaching the viewer through an SSH tunnel. A panel of
+    rendered text is mostly one colour, so it deflates enormously. The bound here is loose on
+    purpose: it is not measuring compression, it is catching a return to sending raw pixels.
+    """
+    panel = KOBO_LIBRA_2
+    levels = bytes(15 if (i // panel.width) % 40 else 0 for i in range(panel.width * panel.height))
+    data = viewer.to_png(levels, panel.width, panel.height)
+    assert len(data) < len(levels) // 10, (
+        f"a full panel is {len(data)} bytes, which is not far enough below the "
+        f"{len(levels)} raw pixels to be worth the encoding"
+    )
 
 
 def test_a_browser_arriving_late_is_given_the_whole_screen() -> None:
@@ -409,7 +445,12 @@ def test_frames_arriving_in_pieces_reach_a_watching_browser() -> None:
 
     payload = json.loads(outbox.get(timeout=5)[len(b"data: ") :])
     assert (payload["x"], payload["y"], payload["w"], payload["h"]) == (2, 1, 4, 2)
-    assert base64.b64decode(payload["levels"]) == bytes([0, 1, 2, 3, 4, 5, 6, 7])
+    import io
+
+    from PIL import Image
+
+    drawn = Image.open(io.BytesIO(base64.b64decode(payload["png"])))
+    assert list(drawn.getdata()) == [value * 17 for value in (0, 1, 2, 3, 4, 5, 6, 7)]
 
     host_end.close()
     assert outbox.get(timeout=5) is None, "the watcher is told when the host goes"
