@@ -299,7 +299,7 @@ def test_the_png_the_viewer_writes_is_the_image_it_was_given() -> None:
     assert read.mode == "L", "greyscale, or the browser is decoding something else"
     assert read.size == (4, 2)
     # 0-15 widened to 0-255 by multiplying by 17, which is exact at both ends.
-    assert list(read.getdata()) == [value * 17 for value in levels]
+    assert read.tobytes() == bytes(value * 17 for value in levels)
 
 
 def test_a_full_panel_png_is_small_enough_to_send_over_a_tunnel() -> None:
@@ -450,7 +450,7 @@ def test_frames_arriving_in_pieces_reach_a_watching_browser() -> None:
     from PIL import Image
 
     drawn = Image.open(io.BytesIO(base64.b64decode(payload["png"])))
-    assert list(drawn.getdata()) == [value * 17 for value in (0, 1, 2, 3, 4, 5, 6, 7)]
+    assert drawn.tobytes() == bytes(value * 17 for value in (0, 1, 2, 3, 4, 5, 6, 7))
 
     host_end.close()
     assert outbox.get(timeout=5) is None, "the watcher is told when the host goes"
