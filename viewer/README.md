@@ -1,16 +1,23 @@
 # The viewer
 
-A window onto the klide simulator, for the machine that has a screen.
+The klide simulator's screen, in a browser.
 
-klide runs on a host that is usually headless and may be one nobody gives us root on, so the window
-cannot open there (AD10). The viewer runs where you are and connects to the host over the network,
+klide runs on a host that is usually headless and may be one nobody gives us root on (AD10). The
+viewer is a klide client that connects over the network and serves what it receives as a page,
 which makes it the first real client of the wire protocol rather than a special case. The Kobo will
 be the second.
 
+It draws in a browser because a browser is the only graphical thing that is already on every
+machine with a screen. It was a tkinter window first, and the history is worth a line: tkinter is
+in the standard library, but a Tcl/Tk the interpreter can find is not, and that is a property of
+the interpreter build and the machine rather than of this code. Three Python pins each failed
+somewhere different, the last aborting inside Xlib on the first draw. V4 in
+[the phase plan](../plans/04_klide_app/05_viewer.md) has the detail.
+
 ## Why it is one file that imports nothing
 
-[`klide_viewer.py`](klide_viewer.py) is self-contained: standard library and tkinter, no klide, no
-Pillow, no pip. Copy it, run it.
+[`klide_viewer.py`](klide_viewer.py) is self-contained: standard library only, no klide, no Pillow,
+no pip, no toolkit. Copy it, run it.
 
 That is worth roughly forty duplicated lines of header parsing for three reasons. It installs on a
 new PC by copying one file, which matters because the PC it runs on changes. It keeps a GUI
@@ -25,44 +32,39 @@ and pins its constants, its refresh table and its input codes to klide's. If the
 
 ## Setup
 
-None, beyond having [uv](https://docs.astral.sh/uv/). The file carries
-[PEP 723](https://peps.python.org/pep-0723/) inline script metadata, so `uv run` reads the block at
-the top, fetches the interpreter it names and builds the environment.
+[uv](https://docs.astral.sh/uv/) on the machine that runs the viewer, and a browser on the machine
+you are sitting at. The file carries [PEP 723](https://peps.python.org/pep-0723/) inline script
+metadata, so `uv run` reads the block at the top and builds the environment.
 
-`requires-python` is `>=3.13,<3.14`, and both halves are doing work. tkinter is in the standard
-library but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons are not alike:
-the 3.13 builds carry Tcl/Tk 9.0 and run, while the 3.14 build resolved on another machine reported
-Tk 8.6 and failed with `Can't find a usable init.tcl`, searching for a library directory its own
-distribution does not contain.
-
-The upper bound is the part that was missing at first. `>=3.13` alone is satisfied by 3.14, so uv
-took the newest it could and landed straight back on the broken build.
-
-If it still cannot open a window it says which of the two problems it is, because the remedies are
-unrelated: a missing Tcl library means the wrong interpreter was used, and a missing display means
-you are on the wrong machine.
-
-Under WSL2 with WSLg the window opens as an ordinary Windows window. `echo $DISPLAY` printing
-something is the sign that part is working.
+`requires-python` is an ordinary floor. It used to be a narrow pinned range, which is what the
+tkinter version needed and never reliably got.
 
 ## Running it
 
-On the host, start a session and wait for a viewer:
+The viewer can run on either machine, because it talks TCP on one side and HTTP on the other. Next
+to the host is the simpler of the two: nothing then has to be copied anywhere.
 
-    uv run klide-live --serve --port 5000
+On the host:
 
-Then, on the machine with the screen:
+    uv run klide-live --serve --port 5000          # one terminal
+    uv run viewer/klide_viewer.py --port 5000      # another; prints the URL
+
+From the machine with the screen, forward the viewer's HTTP port and open it:
+
+    ssh -f -N -L 8000:localhost:8000 <the host>
+    # then browse to http://localhost:8000/
+
+If the host is on your tailnet, `--bind` its tailnet address and browse to it directly with no SSH
+at all. Binding anything other than `127.0.0.1` puts the page on the network, and there is no
+authentication on it, so the tailnet is the only place that is reasonable.
+
+To run the viewer on the machine with the screen instead, copy the one file there and point it at
+the host, forwarding klide's port rather than the viewer's:
 
     uv run klide_viewer.py --host <the host> --port 5000
 
-If the host is on your tailnet, use its tailnet address and nothing else is needed. If it is only
-reachable by SSH, forward the port first:
-
-    ssh -f -N -L 5000:localhost:5000 <the host>
-    uv run klide_viewer.py --host localhost --port 5000
-
-The shebang is `#!/usr/bin/env -S uv run --script`, so `./klide_viewer.py --host ...` works too once
-the file is executable, without naming a Python at all.
+The shebang is `#!/usr/bin/env -S uv run --script`, so `./klide_viewer.py` works too once the file
+is executable, without naming a Python at all.
 
 To check whether a host allows forwarding at all, without root on it, see the probe in
 [the phase plan](../plans/04_klide_app/05_viewer.md).
@@ -76,6 +78,7 @@ To check whether a host allows forwarding at all, without root on it, see the pr
 | drag and release | a swipe, which pages; settled on release, never smooth |
 | `1:1` to `1:4` | how much the panel is scaled down to fit your monitor |
 | `true size` | as close to the panel's physical size as integer scaling allows |
+| `monitor ppi` | what `true size` assumes about your screen; see below |
 | `honest refresh`, or space | wait the refresh time the simulator claims |
 
 **Honest refresh is on by default and that is deliberate.** A redraw takes the hundreds of
@@ -84,9 +87,16 @@ here as it would on the device. Turn it off to click between views quickly when 
 layout rather than feel. Both settings have a job; neither is the concession.
 
 The status line reports the scale, the panel's real size in millimetres, the density it is being
-shown at against your monitor's, and the refresh mode of the last frame. It says all of that
-because the one design fault that survived three phases of gates was text rendered at 6.2 pt, which
-looked fine on a monitor and would have been unreadable on the device.
+shown at against the monitor density it is assuming, and the refresh mode of the last frame. It
+says all of that because the one design fault that survived three phases of gates was text rendered
+at 6.2 pt, which looked fine on a monitor and would have been unreadable on the device.
+
+**A browser cannot measure your monitor**, which is the one thing the tkinter version could do and
+this cannot. CSS pixels are defined against a nominal 96 dpi, not against the glass. So `true size`
+works from the number in the `monitor ppi` box, and the page draws a bar that should be 100 mm
+wide at that number: hold a ruler to it and correct the number until it is. The setting is kept in
+the browser. Until it is calibrated the physical size is a guess, and the status line says
+"assumed" rather than pretending otherwise.
 
 ## What it is for
 

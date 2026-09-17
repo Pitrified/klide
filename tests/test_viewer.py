@@ -10,10 +10,11 @@ file is. Everything the viewer copied from klide is checked against klide here: 
 decoder, the input encoder, and the table of claimed refresh durations.
 
 The viewer is loaded by path rather than imported as a package, because it is not one, and because
-loading it the way the target machine does is part of what is being checked. tkinter is not needed
-to import it, only to run the window, so this works on a headless box.
+loading it the way the target machine does is part of what is being checked. It draws in a browser
+and imports nothing but the standard library, so all of it loads on a headless box.
 """
 
+import base64
 import importlib.util
 import io
 import sys
@@ -96,25 +97,23 @@ def _script_metadata() -> dict[str, Any]:
 
 def test_the_viewer_declares_its_own_environment() -> None:
     # PEP 723 inline metadata is what lets `uv run klide_viewer.py` work on a machine with nothing
-    # set up: uv reads the block, builds the environment, and its own CPython ships tkinter, which
-    # Debian and Ubuntu split out of the system Python into a separate package.
+    # set up: uv reads the block and builds the environment.
     assert "requires-python" in _script_metadata()
 
 
-def test_the_viewer_asks_for_a_python_whose_tk_works() -> None:
-    """The version is load-carrying, not a formality.
+def test_the_viewer_does_not_depend_on_a_graphical_toolkit() -> None:
+    """The reason the viewer draws in a browser.
 
-    tkinter is stdlib but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons are
-    not alike. The 3.13 builds carry Tcl/Tk 9.0 and run; the 3.14 build resolved on another machine
-    reported Tk 8.6 and died with `Can't find a usable init.tcl`. Widening this range at either end
-    lets uv pick a broken one again, on a machine nobody is testing on.
+    This was a tkinter window through three pinned Python versions. tkinter is stdlib, but a Tcl/Tk
+    the interpreter can find is not: one machine failed with `Can't find a usable init.tcl`, and
+    another aborted inside Xlib on the first draw, with Tcl reporting its own threaded notifier.
+    Each pin was a guess about a machine nobody here can run. A browser needs no pin, so the version
+    is an ordinary floor again, and importing a toolkit would quietly bring the problem back.
     """
-    requires = _script_metadata()["requires-python"]
-    assert requires == ">=3.13,<3.14", (
-        f"both halves matter and this is now {requires!r}: the floor keeps uv off the older broken "
-        "builds, and the ceiling keeps it off 3.14, which reported Tk 8.6 and could not find its "
-        "own Tcl library. Leaving the range open took the newest available and landed back on it."
-    )
+    source = VIEWER_PATH.read_text()
+    for toolkit in ("import tkinter", "from tkinter", "import gi", "import PyQt", "import wx"):
+        assert toolkit not in source
+    assert _script_metadata()["requires-python"].startswith(">=3.")
 
 
 def test_the_viewer_declares_no_dependencies_and_should_not_gain_any() -> None:
@@ -267,19 +266,73 @@ def test_streamed_patches_converge_on_the_same_screen_klide_would_show() -> None
     assert bytes(screen.levels) == device.snapshot().levels
 
 
-# The image it builds for Tk
+# What it hands the browser
 
 
-def test_the_pgm_header_and_size_are_right() -> None:
-    # Tk reads PGM natively, which is how the viewer avoids an imaging library entirely.
-    data = viewer.to_pgm(bytes([0, 15, 8, 4]), 2, 2)
-    assert data.startswith(b"P5\n2 2\n255\n")
-    assert len(data) == len(b"P5\n2 2\n255\n") + 4
+def test_a_patch_goes_over_as_its_levels_and_where_to_put_them() -> None:
+    # The page writes these bytes straight into an ImageData, so a change in shape here is a change
+    # in what gets drawn, with nothing in between to catch it.
+    import base64
+    import json
+
+    event = viewer.as_event(viewer.Patch(3, 5, 2, 1, "gl16", 7, bytes([0, 15])))
+    assert event.startswith(b"data: ") and event.endswith(b"\n\n")
+    payload = json.loads(event[len(b"data: ") :])
+    assert (payload["x"], payload["y"], payload["w"], payload["h"]) == (3, 5, 2, 1)
+    assert payload["mode"] == "gl16"
+    assert base64.b64decode(payload["levels"]) == bytes([0, 15])
 
 
-def test_levels_are_spread_across_the_full_range() -> None:
-    data = viewer.to_pgm(bytes([0, 15]), 2, 1)
-    assert data[-2:] == bytes([0, 255])
+def test_a_browser_arriving_late_is_given_the_whole_screen() -> None:
+    # Reloading the page, or opening it after the host has already drawn, has to show what is on
+    # the panel rather than a blank one. The viewer keeps the framebuffer for exactly this.
+    screen = viewer.Screen(4, 3)
+    screen.apply(viewer.Patch(1, 1, 2, 1, "du", 0, bytes([0, 3])))
+    whole = screen.whole()
+    assert (whole.x, whole.y, whole.width, whole.height) == (0, 0, 4, 3)
+    assert whole.levels == bytes([15, 15, 15, 15, 15, 0, 3, 15, 15, 15, 15, 15])
+
+
+def test_the_page_is_told_the_panel_it_is_drawing() -> None:
+    # The page has no klide in it and no way to guess these; they arrive by substitution.
+    import json
+
+    page = viewer.page_for(1264, 1680, 300).decode("utf-8")
+    assert "__CONFIG__" not in page, "the placeholder was left in the served page"
+    line = next(x for x in page.splitlines() if x.startswith("const CONFIG = "))
+    config = json.loads(line[len("const CONFIG = ") : -1])
+    assert (config["width"], config["height"], config["ppi"]) == (1264, 1680, 300)
+    assert config["claimed"] == viewer.CLAIMED_MS
+    assert config["dragThreshold"] == viewer.DRAG_THRESHOLD_PX
+
+
+# What the browser sends back
+
+
+def test_a_tap_from_the_page_reaches_klide() -> None:
+    raw = viewer.input_from_json({"kind": "tap", "x": 640, "y": 900})
+    assert read_input(io.BytesIO(raw)) == InputEvent.tap(640, 900)
+
+
+def test_a_swipe_from_the_page_reaches_klide() -> None:
+    raw = viewer.input_from_json({"kind": "swipe", "direction": "up"})
+    assert read_input(io.BytesIO(raw)) == InputEvent.swipe(Direction.UP)
+
+
+def test_a_button_from_the_page_reaches_klide() -> None:
+    raw = viewer.input_from_json({"kind": "button", "button": "forward"})
+    assert read_input(io.BytesIO(raw)).button is Button.PAGE_FORWARD
+
+
+def test_an_event_the_page_should_never_send_is_refused_rather_than_guessed() -> None:
+    # The POST body comes from a browser, which is the one part of this that is not ours.
+    for nonsense in (
+        {"kind": "nudge"},
+        {"kind": "swipe", "direction": "widdershins"},
+        {"kind": "button", "button": "home"},
+    ):
+        with pytest.raises(viewer.ProtocolError):
+            viewer.input_from_json(nonsense)
 
 
 # Taking messages out of a stream that arrives in pieces
@@ -334,10 +387,29 @@ def test_bad_magic_in_the_buffer_is_refused_rather_than_resynced() -> None:
         viewer.take_message(bytearray(b"XXXX" + bytes(20)))
 
 
-def test_the_viewer_runs_without_threads() -> None:
-    # A discarded PhotoImage can be finalised on whichever thread triggers the collection, and its
-    # finaliser calls into Tk. tkinter is not thread-safe, and the crash it caused was an X
-    # assertion failure, not a Python traceback. The socket is polled from tkinter's own loop.
-    source = VIEWER_PATH.read_text()
-    assert "import threading" not in source
-    assert "Thread" not in source
+def test_frames_arriving_in_pieces_reach_a_watching_browser() -> None:
+    """The reader thread, the framebuffer and the event stream, over a real socket pair.
+
+    Each half has a test above; this is the one that would notice them being wired together wrong.
+    It uses a socketpair rather than a mock because the thing being checked is that bytes divided
+    the way a socket divides them still come out as one patch.
+    """
+    import json
+    import socket as socketlib
+
+    panel = Panel(name="pair", width=8, height=6, grey_levels=16, ppi=300)
+    host_end, viewer_end = socketlib.socketpair()
+    bridge = viewer.Bridge(viewer_end, panel.width, panel.height)
+    outbox = bridge.subscribe()
+    assert outbox.get(timeout=5), "a new watcher gets the screen as it stands"
+
+    message = encode_frame(Frame(panel, 2, 1, 4, 2, bytes([0, 1, 2, 3, 4, 5, 6, 7])))
+    for start in range(0, len(message), 3):
+        host_end.sendall(message[start : start + 3])
+
+    payload = json.loads(outbox.get(timeout=5)[len(b"data: ") :])
+    assert (payload["x"], payload["y"], payload["w"], payload["h"]) == (2, 1, 4, 2)
+    assert base64.b64decode(payload["levels"]) == bytes([0, 1, 2, 3, 4, 5, 6, 7])
+
+    host_end.close()
+    assert outbox.get(timeout=5) is None, "the watcher is told when the host goes"

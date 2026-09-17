@@ -45,7 +45,10 @@ rather than a special case. The Kobo will do the same later over Tailscale.
 
 The measured topology, one hop:
 
-    WSL2 and WSLg on Windows          the viewer, a window
+    a browser, wherever you are sitting
+      |  HTTP
+      v
+    the viewer, a page served over a socket    either machine; simpler next to the host
       |  TCP
       v
     wherever Claude runs              the klide host, headless
@@ -92,12 +95,13 @@ None of this matters where Tailscale reaches the host, which is the case to pref
 
 What this costs on the host: nothing. An unprivileged user can bind a high TCP port, verified. No
 privileged command, no install, no sshd edit, no boot step, nothing to ask an admin for. The host does
-not even need tkinter, which is just as well since its system Python has none.
+not need a graphical toolkit, which is just as well since it has no display to use one on.
 
-What it costs on the machine with the screen: a copied file, and uv. The PEP 723 block names Python
-3.13 so uv fetches an interpreter whose Tk works, which is the whole of the setup. WSLg was
-confirmed working on the WSL machine (WSL 2.5.10, WSLg 1.0.66, `DISPLAY=:0.0`), though the first
-real run was on an ordinary Ubuntu desktop instead.
+What it costs on the machine with the screen: a browser, and one forwarded port. REVISED 2026-09-17
+with V4. This previously read "a copied file, and uv", which was true of the tkinter version and was
+the part that kept failing. Nothing needs to be installed on that machine now, and nothing needs to
+be copied to it: the viewer runs next to the host and serves a page. WSLg was confirmed working on
+the WSL machine (WSL 2.5.10, WSLg 1.0.66, `DISPLAY=:0.0`) and is no longer needed for this.
 
 The host needs TCP, which it does not have yet: `host.py` speaks unix sockets only. That is not extra
 work, it is the device client's transport (D8, Q4) pulled forward a phase.
@@ -106,7 +110,7 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
 
 - Add TCP to the host, alongside the unix socket the gates use. Bind the tailnet address, not
   only loopback, so a peer can reach it without a forward.
-- A window showing the current frame, scaled to fit an ordinary monitor, redrawing when the frame changes.
+- A page showing the current frame, scaled to fit an ordinary monitor, redrawing when the frame changes.
   The scale factor is displayed, because a 300 ppi panel shown at 96 ppi is misleading by default and
   that misleading is exactly what caused the legibility fault.
 - A way to see it at true physical size, or as close as the monitor allows, since that is the thing
@@ -132,6 +136,9 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
 - ~~V1: What the viewer is written in.~~ ANSWERED 2026-09-16: Python and tkinter, under WSLg,
   confirmed working on the target machine. A browser page was the alternative and pulls in more for
   no gain, now that nothing has to be served to a remote display.
+  OVERTURNED 2026-09-17 by V4 below, which is where the reasoning is. "Confirmed working on the
+  target machine" was the claim that did not survive; it had been confirmed on one machine, which
+  then turned out not to be the one with the screen.
   It needs nothing installed. The file carries PEP 723 metadata asking for Python 3.13, so `uv run
   klide_viewer.py` fetches that interpreter and runs.
   CORRECTED 2026-09-17, twice, which is worth leaving visible. The first version said nothing needed
@@ -142,15 +149,27 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
   Python and an apt package, which gives up the property that made one file worth having. The fix is
   neither: name the version. uv's 3.13 builds carry Tcl/Tk 9.0, so asking for 3.13 makes uv fetch a
   working interpreter rather than accepting whatever the machine had.
-- V4: Whether the viewer should stop being a tkinter window and become a page in a browser.
-  Opened 2026-09-17 by the thing that went wrong: tkinter is stdlib, but a working Tcl/Tk is not,
-  and that is the only part of the viewer that does not travel. A browser is on every machine
-  already, needs no package and no `$DISPLAY`, works through the same port forward, and would
-  survive the machine being replaced without a thought. The cost is a second way to draw the screen
-  and a small stdlib HTTP server, against a tkinter version that already runs.
-  Not urgent, and not to be decided before the viewer has been used: the point of this phase is to
-  find out what is wrong by using it, and swapping the toolkit before anyone has looked at a frame
-  would be the same mistake in a new place.
+- ~~V4: Whether the viewer should stop being a tkinter window and become a page in a browser.~~
+  Opened 2026-09-17 because a working Tcl/Tk was the only part of the viewer that did not travel.
+  ANSWERED the same day, by the tkinter version never once running on the machine it was for.
+  The deciding evidence was a probe with no klide in it: a bare `Tk()` succeeded on that host and
+  the next call, `root.update()`, aborted inside Xlib with `[xcb] Unknown sequence number`. No
+  image, no socket, nothing of ours. The same probe reported Tcl 8.6.14 with `tcl_platform(threaded)`
+  set, which also disposes of the previous day's diagnosis: the thread making X calls was Tcl's own
+  notifier, so removing the viewer's reader thread could not have helped, and the Python pin had
+  never been selecting the Tcl I claimed it did.
+  Four attempts, each asserting a fix from one machine's behaviour and each failing differently on
+  the machine that has the screen. Pinning a fourth Python would have been the same move again. A
+  browser removes the whole class: no toolkit, no `$DISPLAY`, no Tcl, no version to guess at.
+  What it costs, now that it is written: an HTTP server and an event stream in the standard library,
+  the panel drawn into a canvas through `ImageData`, and one thing genuinely lost. A browser cannot
+  measure the monitor, where tkinter could ask X. True physical size is therefore a number the
+  person calibrates against a ruler, with a 100 mm bar on the page to do it with, and the status
+  line says "assumed" until they do. That matters more here than elsewhere, because physical
+  legibility is the question this phase exists to answer.
+  What is still unverified: the page's JavaScript has never been run. There is no browser and no JS
+  runtime on the host, so the server, the protocol and the event stream are covered end to end by a
+  test over real HTTP, and the drawing code is covered by reading it.
 - ~~V3: Whether the viewer imports `klide` or reimplements the protocol in one self-contained file.~~
   ANSWERED 2026-09-16: one self-contained file, standard library and tkinter only, no `klide` import
   and no third-party dependency. It lives in `viewer/` rather than `src/klide/` because it ships to a
