@@ -151,6 +151,23 @@ Recorded as they came, since this is the phase that exists to collect them.
   host. Reloading the browser is fine, since that is only the event stream. Not yet fixed.
 - **A browser cannot measure the monitor.** Noted under V4 rather than here, because it is a
   consequence of the toolkit rather than something the sitting turned up.
+- **The text reads as jagged at true size**, reported by the person looking at it. Three things
+  were checked before changing anything, and only one of them was a fault.
+  The rendering at panel resolution is fine: all sixteen greys in use, evenly antialiased, checked
+  by magnifying the frame klide produces rather than the frame a browser draws.
+  The browser's default downscale was not the culprit either. Replacing it with an area resample
+  made almost no difference in a magnified comparison, which is worth recording so it does not get
+  tried again.
+  The fault was a second resample nobody asked for: the canvas backing store was an integer 459
+  pixels and its CSS width was set to the fractional ideal of 459.27, so the compositor rescaled it
+  again by 1.0006. Too small to see as a size difference, large enough to make stems uneven. The
+  canvas is now sized from the integer backing store, so one canvas pixel lands on one device pixel.
+  What remains after that is physics rather than a defect, and the workflow follows from it: 300 ppi
+  glyphs shown at 109 ppi have lost two thirds of their detail, and no filter puts it back. Judge
+  size at true size; judge sharpness at 1:1, where the pixels on screen are exactly the device's.
+  The panel and the displayed canvas are separate now, which also makes the viewer correct on a
+  HiDPI screen: it renders into as many real pixels as the display has, rather than handing CSS a
+  canvas to stretch.
 - **True size was not true.** It rounded to a whole-number scale, which is a tkinter limitation
   carried over without noticing: photo images only subsample by integers and CSS has no such rule.
   On a monitor calibrated to 110 ppi it showed the 107 mm panel at 97 mm, nine per cent small, in

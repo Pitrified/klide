@@ -160,6 +160,10 @@ wide at that number: hold a ruler to it and correct the number until it is. The 
 the browser. Until it is calibrated the physical size is a guess, and the status line says
 "assumed" rather than pretending otherwise.
 
+Judge size at true size and sharpness at 1:1. At 1:1 the pixels on screen are exactly the device's,
+just bigger than life; at true size the panel is the right size but has lost two thirds of its
+detail on the way to a 109 ppi monitor, and no amount of filtering puts that back.
+
 Once calibrated it is exact rather than approximate, and the status line reports what the panel
 measures so the same ruler can check it: at 110 ppi it reads `1:2.73` and `shown 107 mm wide`,
 against a panel that is 107 mm. What it cannot give you is sharpness. At true size the browser

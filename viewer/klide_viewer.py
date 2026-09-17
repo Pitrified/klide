@@ -440,10 +440,23 @@ addEventListener("unhandledrejection", (event) => {
   say(`unhandled rejection: ${event.reason}`);
 });
 
+// Two canvases, and the split is the point.
+//
+// `panel` is the framebuffer at the device's own size. Patches land in it and nothing else touches
+// it, so what it holds is exactly what the panel holds.
+//
+// `canvas` is what you look at, sized in real screen pixels for the scale chosen. The panel is
+// resampled into it rather than handed to CSS to squeeze, because a browser's default downscale of
+// a non-integer ratio is a cheap filter: at 1:2.75 it drops some stems of a letter and doubles
+// others, which reads as jagged rather than merely soft. Text at 300 ppi shown at 109 ppi has to
+// lose detail; it should lose it evenly.
+const panel = document.createElement("canvas");
+panel.width = CONFIG.width;
+panel.height = CONFIG.height;
+const pctx = panel.getContext("2d");
+
 const canvas = document.getElementById("panel");
 const ctx = canvas.getContext("2d");
-canvas.width = CONFIG.width;
-canvas.height = CONFIG.height;
 
 let scale = 3;
 let trueSize = false;
@@ -475,7 +488,8 @@ function decode(b64) {
 async function paint(patch) {
   // drawImage rather than a loop over ImageData: the frame arrives as a PNG, so the decoding is
   // the browser's and the page does no per-pixel work at all.
-  ctx.drawImage(await decode(patch.png), patch.x, patch.y);
+  pctx.drawImage(await decode(patch.png), patch.x, patch.y);
+  await present();
   painted++;
   lastMode = patch.mode;
   say(`painted ${patch.w}x${patch.h} at (${patch.x},${patch.y}) ${patch.mode},`
@@ -508,9 +522,47 @@ async function step() {
   step();
 }
 
-function resize() {
-  canvas.style.width = (CONFIG.width / scale) + "px";
-  canvas.style.height = (CONFIG.height / scale) + "px";
+async function present() {
+  // The panel, resampled once into however many real screen pixels it is being shown in.
+  const cssWidth = CONFIG.width / scale;
+  const cssHeight = CONFIG.height / scale;
+  const width = Math.max(1, Math.round(cssWidth * devicePixelRatio));
+  const height = Math.max(1, Math.round(cssHeight * devicePixelRatio));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  // Sized from the integer backing store, not from the fractional ideal. Setting a 459 pixel
+  // canvas to a width of 459.27 css pixels makes the compositor resample it a second time, by a
+  // factor of 1.0006, which is enough to make stems uneven without being enough to see as a size
+  // difference. One canvas pixel has to land on exactly one device pixel.
+  canvas.style.width = width / devicePixelRatio + "px";
+  canvas.style.height = height / devicePixelRatio + "px";
+  if (width === panel.width && height === panel.height) {
+    ctx.drawImage(panel, 0, 0);  // 1:1, so no resampling at all and the pixels are the device's
+    return;
+  }
+  // resizeQuality "high" is a proper area resample rather than the browser's default when a
+  // canvas is squeezed by CSS. Both engines support the option; if one ever stops, the catch
+  // falls back to the old behaviour rather than showing nothing.
+  try {
+    const fitted = await createImageBitmap(panel, {
+      resizeWidth: width,
+      resizeHeight: height,
+      resizeQuality: "high",
+    });
+    ctx.drawImage(fitted, 0, 0);
+    fitted.close();
+  } catch (failure) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(panel, 0, 0, panel.width, panel.height, 0, 0, width, height);
+    say(`resampling fell back: ${failure}`);
+  }
+}
+
+async function resize() {
+  await present();
   showStatus();
 }
 
