@@ -211,6 +211,14 @@ Built, and waiting on the part only a person can do.
   into the same blank ending. Both fixed. A third was in the harness rather than the code: a
   readiness probe that connected and closed was itself consuming the single connection `serve`
   accepts.
+- **The viewer has no threads, and that is a fix rather than a simplification.** The first version
+  read the socket on a second thread and posted frames to the UI through a queue, which is the
+  obvious shape and crashed X with `[xcb] Unknown sequence number` and an assertion failure. Nothing
+  in that thread touched Tk. What touched Tk was the garbage collector: each redraw discards a
+  `PhotoImage`, whose finaliser calls into Tk, and a finaliser runs on whichever thread happened to
+  trigger the collection. tkinter is not thread-safe, so the socket is polled from inside tkinter's
+  own loop instead. That made partial reads explicit, which they always were: a full frame is about
+  a megabyte and TCP delivers it in pieces.
 - **TCP is alongside the unix socket, not instead of it.** The gates keep using the unix socket,
   which needs no port and cannot collide, so nothing already green was disturbed by adding a
   transport.

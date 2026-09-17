@@ -48,10 +48,8 @@ from __future__ import annotations
 
 import argparse
 import base64
-import queue
 import socket
 import sys
-import threading
 import time
 import tkinter as tk
 from dataclasses import dataclass
@@ -195,27 +193,24 @@ class Screen:
         return to_pgm(bytes(self.levels), self.width, self.height)
 
 
-class Reader(threading.Thread):
-    """Reads the socket and posts patches to the UI thread through a queue.
+def take_message(buffer: bytearray) -> tuple[int, bytes] | None:
+    """Pull one complete message out of `buffer`, or return None and leave it untouched.
 
-    A thread rather than an event loop integration, because tkinter owns the main loop and a
-    blocking read cannot live in it.
+    TCP delivers a megabyte frame in whatever pieces it likes, so "read a message" is not an
+    operation the socket offers; this is. Bytes accumulate in the buffer across polls and a message
+    is consumed only once all of it has arrived.
     """
-
-    def __init__(self, sock: socket.socket, inbox: queue.Queue[tuple[str, object]]) -> None:
-        super().__init__(daemon=True)
-        self.sock = sock
-        self.inbox = inbox
-
-    def run(self) -> None:
-        stream = self.sock.makefile("rb")
-        try:
-            while True:
-                msg_type, body = read_message(stream)
-                if msg_type == FRAME:
-                    self.inbox.put(("frame", decode_frame(body)))
-        except Exception as ended:  # noqa: BLE001 - any failure here means the host is gone
-            self.inbox.put(("gone", str(ended)))
+    if len(buffer) < HEADER_SIZE:
+        return None
+    if buffer[:4] != MAGIC:
+        raise ProtocolError(f"bad magic {bytes(buffer[:4])!r}, expected {MAGIC!r}")
+    body_len = int.from_bytes(buffer[5:9], "big")
+    if len(buffer) < HEADER_SIZE + body_len:
+        return None
+    msg_type = buffer[4]
+    body = bytes(buffer[HEADER_SIZE : HEADER_SIZE + body_len])
+    del buffer[: HEADER_SIZE + body_len]
+    return msg_type, body
 
 
 class Viewer:
@@ -223,9 +218,14 @@ class Viewer:
 
     def __init__(self, sock: socket.socket, width: int, height: int, ppi: int) -> None:
         self.sock = sock
+        # Non-blocking, because the socket is polled from inside tkinter's own loop. An earlier
+        # version read it on a second thread, which crashed X: a discarded PhotoImage can be
+        # finalised on whichever thread happens to trigger the collection, and its finaliser calls
+        # into Tk. tkinter is not thread-safe, so the answer is not to have a second thread.
+        sock.setblocking(False)
+        self.incoming = bytearray()
         self.screen = Screen(width, height)
         self.ppi = ppi
-        self.inbox: queue.Queue[tuple[str, object]] = queue.Queue()
         self.scale = 3
         self.honest = True
         self.busy_until = 0.0
@@ -235,7 +235,6 @@ class Viewer:
         self.root = tk.Tk()
         self.root.title("klide viewer")
         self._build()
-        Reader(sock, self.inbox).start()
         self.root.after(30, self._pump)
 
     # Layout
@@ -336,23 +335,48 @@ class Viewer:
     # Frames, from the host
 
     def _pump(self) -> None:
-        """Take what has arrived, respecting the refresh delay when honest mode is on."""
+        """Take whatever the socket has, then draw at most one frame.
+
+        One frame per tick on purpose. In honest mode the panel is busy for the refresh it claims,
+        and drawing a backlog as fast as it arrived would show a flicker of states the device could
+        never have displayed.
+        """
+        if not self._drain():
+            return
         now = time.monotonic()
-        if now >= self.busy_until:
-            try:
-                kind, payload = self.inbox.get_nowait()
-            except queue.Empty:
-                pass
-            else:
-                if kind == "gone":
-                    self.status.config(text=f"host disconnected: {payload}")
-                else:
-                    self.screen.apply(payload)
-                    self.last_mode = payload.waveform
-                    if self.honest:
-                        self.busy_until = now + CLAIMED_MS[payload.waveform] / 1000
-                    self._redraw()
+        if now < self.busy_until:
+            self.root.after(30, self._pump)
+            return
+        try:
+            message = take_message(self.incoming)
+        except ProtocolError as bad:
+            self.status.config(text=f"bad message from host: {bad}")
+            return
+        if message is not None:
+            msg_type, body = message
+            if msg_type == FRAME:
+                patch = decode_frame(body)
+                self.screen.apply(patch)
+                self.last_mode = patch.waveform
+                if self.honest:
+                    self.busy_until = now + CLAIMED_MS[patch.waveform] / 1000
+                self._redraw()
         self.root.after(30, self._pump)
+
+    def _drain(self) -> bool:
+        """Move whatever has arrived into the buffer. False once the host has gone."""
+        while True:
+            try:
+                chunk = self.sock.recv(1 << 16)
+            except BlockingIOError:
+                return True
+            except OSError as gone:
+                self.status.config(text=f"host disconnected: {gone}")
+                return False
+            if not chunk:
+                self.status.config(text="host disconnected")
+                return False
+            self.incoming += chunk
 
     def _redraw(self) -> None:
         image = tk.PhotoImage(data=base64.b64encode(self.screen.pgm()))

@@ -32,6 +32,7 @@ from klide.protocol import (
     MAGIC,
     WAVEFORM_CODES,
     encode_frame,
+    encode_input,
     read_input,
 )
 from klide.waveform import FBINK_CLAIMS, Waveform
@@ -279,3 +280,64 @@ def test_the_pgm_header_and_size_are_right() -> None:
 def test_levels_are_spread_across_the_full_range() -> None:
     data = viewer.to_pgm(bytes([0, 15]), 2, 1)
     assert data[-2:] == bytes([0, 255])
+
+
+# Taking messages out of a stream that arrives in pieces
+
+
+def test_an_incomplete_buffer_yields_nothing_and_is_left_alone() -> None:
+    # TCP delivers a megabyte frame in whatever pieces it likes, so a partial buffer is the normal
+    # case rather than an error.
+    message = encode_frame(a_frame())
+    buffer = bytearray(message[:20])
+    assert viewer.take_message(buffer) is None
+    assert len(buffer) == 20
+
+
+def test_a_complete_message_is_taken_and_consumed() -> None:
+    buffer = bytearray(encode_frame(a_frame()))
+    taken = viewer.take_message(buffer)
+    assert taken is not None
+    assert taken[0] == FRAME
+    assert buffer == bytearray()
+
+
+def test_a_frame_arriving_in_many_small_pieces_is_reassembled() -> None:
+    """The case that matters: a full-panel frame is about a megabyte and never arrives at once."""
+    panel = KOBO_LIBRA_2
+    levels = bytes((i * 5) % panel.grey_levels for i in range(panel.width * panel.height))
+    message = encode_frame(Frame(panel, 0, 0, panel.width, panel.height, levels))
+
+    buffer = bytearray()
+    taken = None
+    for start in range(0, len(message), 4096):
+        buffer += message[start : start + 4096]
+        taken = viewer.take_message(buffer)
+        if taken is not None:
+            break
+    assert taken is not None, "never reassembled"
+    assert viewer.decode_frame(taken[1]).levels == levels
+    assert buffer == bytearray()
+
+
+def test_two_messages_in_one_read_are_taken_one_at_a_time() -> None:
+    buffer = bytearray(encode_frame(a_frame()) + encode_input(InputEvent.tap(1, 2)))
+    first = viewer.take_message(buffer)
+    second = viewer.take_message(buffer)
+    assert first is not None and second is not None
+    assert (first[0], second[0]) == (FRAME, INPUT)
+    assert viewer.take_message(buffer) is None
+
+
+def test_bad_magic_in_the_buffer_is_refused_rather_than_resynced() -> None:
+    with pytest.raises(viewer.ProtocolError, match="bad magic"):
+        viewer.take_message(bytearray(b"XXXX" + bytes(20)))
+
+
+def test_the_viewer_runs_without_threads() -> None:
+    # A discarded PhotoImage can be finalised on whichever thread triggers the collection, and its
+    # finaliser calls into Tk. tkinter is not thread-safe, and the crash it caused was an X
+    # assertion failure, not a Python traceback. The socket is polled from tkinter's own loop.
+    source = VIEWER_PATH.read_text()
+    assert "import threading" not in source
+    assert "Thread" not in source
