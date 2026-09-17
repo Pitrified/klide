@@ -397,7 +397,10 @@ PAGE = """<!doctype html>
     toggles honest refresh.</p>
     <p><b>True size.</b> A browser cannot know how big your monitor is, so this uses the number in
     the box. To make it real, hold a ruler to the bar below and set the number until the bar
-    measures 100 mm.</p>
+    measures 100 mm. The status line then says what the panel measures, which the same ruler
+    checks.</p>
+    <p>At true size the browser is resampling 1264 columns into a few hundred, so the text is
+    softer than it would be on a 300 ppi panel. The size is honest; the sharpness is not.</p>
     <div id="ruler"></div>
   </aside>
 </div>
@@ -513,12 +516,16 @@ function resize() {
 
 function showStatus() {
   const mm = CONFIG.width / CONFIG.ppi * 25.4;
-  const shown = CONFIG.ppi / scale;
+  // What the panel actually measures on the glass right now, so it can be checked with the same
+  // ruler that calibrated the number. Millimetres rather than a density, because a density cannot
+  // be held against a ruler.
+  const shownMm = CONFIG.width / scale * devicePixelRatio / monitorPpi * 25.4;
   const claimed = CONFIG.claimed[lastMode];
+  const ratio = Number.isInteger(scale) ? `1:${scale}` : `1:${scale.toFixed(2)}`;
   document.getElementById("status").textContent =
-    `1:${scale}  panel ${CONFIG.width}x${CONFIG.height} at ${CONFIG.ppi} ppi`
+    `${ratio}  panel ${CONFIG.width}x${CONFIG.height} at ${CONFIG.ppi} ppi`
     + ` (${mm.toFixed(0)} mm wide)`
-    + `   shown at ${shown.toFixed(0)} ppi on an assumed ${monitorPpi} ppi monitor`
+    + `   shown ${shownMm.toFixed(0)} mm wide on an assumed ${monitorPpi} ppi monitor`
     + `   refresh ${lastMode}${claimed ? " " + claimed + "ms claimed" : ""}`
     + `   ${honest ? "honest" : "fast"}   ${sent}`;
 }
@@ -537,11 +544,19 @@ for (const button of document.querySelectorAll("button[data-scale]")) {
   };
 }
 function fitTrueSize() {
-  // Only whole-number downscaling looks right, so this lands near the true size rather than on it,
-  // and the status line says what it actually achieved.
+  // Exactly the panel's physical size, not the nearest whole-number scale.
+  //
+  // This rounded to an integer until 2026-09-17, which was a tkinter limitation carried over
+  // without noticing: its photo images only subsample by whole numbers. CSS has no such rule, so
+  // the panel can be the size it really is. On a 110 ppi monitor the rounding was showing a 107 mm
+  // panel at 97 mm, and judging whether text is too small is the one thing this view is for.
+  //
+  // The cost is that the browser resamples 1264 columns into about 460, so the text is softer than
+  // an e-ink panel at 300 ppi. Nothing on a 110 ppi monitor can show 300 ppi detail; what this does
+  // show honestly is size.
   trueSize = true;
-  scale = Math.max(1, Math.round(CONFIG.ppi / (monitorPpi / devicePixelRatio)));
-  say(`true size at an assumed ${monitorPpi} ppi lands on 1:${scale}`);
+  scale = CONFIG.ppi / monitorPpi * devicePixelRatio;
+  say(`true size at an assumed ${monitorPpi} ppi is 1:${scale.toFixed(2)}`);
   resize();
 }
 document.getElementById("true-size").onclick = fitTrueSize;

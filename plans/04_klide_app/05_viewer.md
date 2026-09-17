@@ -151,6 +151,15 @@ Recorded as they came, since this is the phase that exists to collect them.
   host. Reloading the browser is fine, since that is only the event stream. Not yet fixed.
 - **A browser cannot measure the monitor.** Noted under V4 rather than here, because it is a
   consequence of the toolkit rather than something the sitting turned up.
+- **True size was not true.** It rounded to a whole-number scale, which is a tkinter limitation
+  carried over without noticing: photo images only subsample by integers and CSS has no such rule.
+  On a monitor calibrated to 110 ppi it showed the 107 mm panel at 97 mm, nine per cent small, in
+  the one view whose entire purpose is judging whether text is too small. Now exact: 1:2.73, and
+  the status line reports the measured width so the same ruler checks it.
+  What it still cannot give is sharpness, and that is worth stating rather than discovering later.
+  At true size the browser resamples 1264 columns into about 460, so the text is softer than a
+  300 ppi panel. The size is honest, the crispness is not, and a verdict on legibility has to
+  allow for that.
 - **It was slow over a tunnel: four to five seconds a press.** Frames went to the browser as one
   byte per pixel, base64-encoded, which is 2.8 MB for a full screen. Rendering, diffing and
   encoding on the host total under 0.2s and a press-to-paint round trip here is about 0.35s, so all

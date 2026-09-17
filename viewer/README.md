@@ -160,6 +160,12 @@ wide at that number: hold a ruler to it and correct the number until it is. The 
 the browser. Until it is calibrated the physical size is a guess, and the status line says
 "assumed" rather than pretending otherwise.
 
+Once calibrated it is exact rather than approximate, and the status line reports what the panel
+measures so the same ruler can check it: at 110 ppi it reads `1:2.73` and `shown 107 mm wide`,
+against a panel that is 107 mm. What it cannot give you is sharpness. At true size the browser
+resamples 1264 columns into about 460, so the text is softer than a 300 ppi panel would be.
+Nothing at 110 ppi can show 300 ppi detail; the size is honest and the crispness is not.
+
 ## What it is for
 
 Every other check in klide compares its output against a reference klide produced. Those catch a
