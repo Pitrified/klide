@@ -100,6 +100,18 @@ def test_the_viewer_declares_its_own_environment() -> None:
     assert "requires-python" in _script_metadata()
 
 
+def test_the_viewer_asks_for_a_python_whose_tk_works() -> None:
+    """The version is load-carrying, not a formality.
+
+    tkinter is stdlib but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons are
+    not alike. A build resolved on another machine was linked against Tcl 8.6 with no 8.6 library
+    files and died with `Can't find a usable init.tcl`; the 3.13 builds carry Tcl/Tk 9.0 and run.
+    Lowering this floor would let uv pick the broken kind again, on a machine nobody is testing on.
+    """
+    requires = _script_metadata()["requires-python"]
+    assert requires == ">=3.13", f"lowering this reintroduces the broken-Tk builds, got {requires}"
+
+
 def test_the_viewer_declares_no_dependencies_and_should_not_gain_any() -> None:
     # The moment this list is non-empty the file stops being copyable to a machine with no network
     # or no patience, and starts being an install. The standard library and tkinter are the budget.

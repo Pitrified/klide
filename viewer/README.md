@@ -25,24 +25,19 @@ and pins its constants, its refresh table and its input codes to klide's. If the
 
 ## Setup
 
-One package, on the machine with the screen:
+None, beyond having [uv](https://docs.astral.sh/uv/). The file carries
+[PEP 723](https://peps.python.org/pep-0723/) inline script metadata, so `uv run` reads the block at
+the top, fetches the interpreter it names and builds the environment.
 
-    sudo apt install python3-tk        # Debian, Ubuntu, and WSL distros
+`requires-python` is 3.13, and that version is doing real work. tkinter is in the standard library
+but needs a Tcl/Tk the interpreter can find, and uv's standalone CPythons are not alike: the 3.13
+builds carry Tcl/Tk 9.0 and run, while an earlier build resolved on another machine was linked
+against Tcl 8.6 with no 8.6 library files and failed with `Can't find a usable init.tcl`. Naming
+3.13 is what makes uv fetch a working one instead of whatever was already on the machine.
 
-Then run it with the system Python. tkinter is in the standard library, but it needs a Tcl/Tk the
-interpreter can find, and that is the one part of this file that does not travel.
-
-The file carries [PEP 723](https://peps.python.org/pep-0723/) metadata and `uv run
-klide_viewer.py` does work where uv's interpreter has a working Tk. It is not dependable, and the
-difference is worth knowing rather than rediscovering. uv fetches a standalone CPython whose
-bundled Tcl differs by build: one machine here resolved 3.13 with Tcl 9.0 and ran; another resolved
-a build linked against Tcl 8.6 with no 8.6 library files and failed with `Can't find a usable
-init.tcl`. `requires-python` is set low on purpose so that a system Python which already has a
-working Tk is eligible rather than passed over.
-
-If it cannot open a window it now says which of the two problems it is, because the remedies are
-opposites: a missing Tcl library means use the system Python, and a missing display means you are
-on the wrong machine.
+If it still cannot open a window it says which of the two problems it is, because the remedies are
+unrelated: a missing Tcl library means the wrong interpreter was used, and a missing display means
+you are on the wrong machine.
 
 Under WSL2 with WSLg the window opens as an ordinary Windows window. `echo $DISPLAY` printing
 something is the sign that part is working.

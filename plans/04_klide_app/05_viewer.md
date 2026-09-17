@@ -94,10 +94,10 @@ What this costs on the host: nothing. An unprivileged user can bind a high TCP p
 privileged command, no install, no sshd edit, no boot step, nothing to ask an admin for. The host does
 not even need tkinter, which is just as well since its system Python has none.
 
-What it costs on the machine with the screen: one package, `sudo apt install python3-tk`, and a
-copied file. That side is one we administer, so a package is acceptable there in a way it is not on
-the host (AD10). WSLg was confirmed working on the WSL machine (WSL 2.5.10, WSLg 1.0.66,
-`DISPLAY=:0.0`), though the first real run was on an ordinary Ubuntu desktop instead.
+What it costs on the machine with the screen: a copied file, and uv. The PEP 723 block names Python
+3.13 so uv fetches an interpreter whose Tk works, which is the whole of the setup. WSLg was
+confirmed working on the WSL machine (WSL 2.5.10, WSLg 1.0.66, `DISPLAY=:0.0`), though the first
+real run was on an ordinary Ubuntu desktop instead.
 
 The host needs TCP, which it does not have yet: `host.py` speaks unix sockets only. That is not extra
 work, it is the device client's transport (D8, Q4) pulled forward a phase.
@@ -132,15 +132,16 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
 - ~~V1: What the viewer is written in.~~ ANSWERED 2026-09-16: Python and tkinter, under WSLg,
   confirmed working on the target machine. A browser page was the alternative and pulls in more for
   no gain, now that nothing has to be served to a remote display.
-  It needs one package on the machine with the screen, `sudo apt install python3-tk`, and the system
-  Python.
-  CORRECTED 2026-09-17. This previously read that nothing needed installing, because uv's CPython
-  ships tkinter, "checked on this box". The check was real and the conclusion was not: it held for
-  one interpreter on one machine. On a second machine uv resolved a CPython linked against Tcl 8.6
-  with no 8.6 library files and the viewer died with `Can't find a usable init.tcl`, while this box
-  had 3.13 with Tcl 9.0 and worked. uv's bundled Tcl varies by build, so tkinter cannot be assumed
-  to work merely because it imports. The file still carries PEP 723 metadata, with `requires-python`
-  lowered to 3.9 so a system Python with a working Tk is eligible rather than passed over.
+  It needs nothing installed. The file carries PEP 723 metadata asking for Python 3.13, so `uv run
+  klide_viewer.py` fetches that interpreter and runs.
+  CORRECTED 2026-09-17, twice, which is worth leaving visible. The first version said nothing needed
+  installing because uv's CPython ships tkinter, "checked on this box": the check was real and the
+  conclusion was not, since it held for one interpreter on one machine. On a second machine uv
+  resolved a CPython linked against Tcl 8.6 with no 8.6 library files and the viewer died with
+  `Can't find a usable init.tcl`. The second version then over-corrected, falling back to a system
+  Python and an apt package, which gives up the property that made one file worth having. The fix is
+  neither: name the version. uv's 3.13 builds carry Tcl/Tk 9.0, so asking for 3.13 makes uv fetch a
+  working interpreter rather than accepting whatever the machine had.
 - V4: Whether the viewer should stop being a tkinter window and become a page in a browser.
   Opened 2026-09-17 by the thing that went wrong: tkinter is stdlib, but a working Tcl/Tk is not,
   and that is the only part of the viewer that does not travel. A browser is on every machine
