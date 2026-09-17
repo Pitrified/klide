@@ -94,10 +94,10 @@ What this costs on the host: nothing. An unprivileged user can bind a high TCP p
 privileged command, no install, no sshd edit, no boot step, nothing to ask an admin for. The host does
 not even need tkinter, which is just as well since its system Python has none.
 
-What it costs on the WSL side: nothing but uv. The viewer declares its own environment with PEP 723
-metadata and uv's CPython ships tkinter, so there is no package to install and no privileged command
-on that side either. WSLg was confirmed working there (WSL 2.5.10, WSLg 1.0.66, `DISPLAY=:0.0`), and
-that machine is being replaced soon, which is why its setup being one copied file is worth having.
+What it costs on the machine with the screen: one package, `sudo apt install python3-tk`, and a
+copied file. That side is one we administer, so a package is acceptable there in a way it is not on
+the host (AD10). WSLg was confirmed working on the WSL machine (WSL 2.5.10, WSLg 1.0.66,
+`DISPLAY=:0.0`), though the first real run was on an ordinary Ubuntu desktop instead.
 
 The host needs TCP, which it does not have yet: `host.py` speaks unix sockets only. That is not extra
 work, it is the device client's transport (D8, Q4) pulled forward a phase.
@@ -132,11 +132,24 @@ work, it is the device client's transport (D8, Q4) pulled forward a phase.
 - ~~V1: What the viewer is written in.~~ ANSWERED 2026-09-16: Python and tkinter, under WSLg,
   confirmed working on the target machine. A browser page was the alternative and pulls in more for
   no gain, now that nothing has to be served to a remote display.
-  It needs nothing installed. The file carries PEP 723 inline script metadata, so `uv run
-  klide_viewer.py` builds its own environment, and uv's CPython ships tkinter where the system
-  Python on Debian and Ubuntu splits it into a `python3-tk` package. Checked on this box: the system
-  Python cannot import tkinter and uv's can. That matters more than it looks, because the machine
-  with the screen is being replaced and its setup is now one copied file.
+  It needs one package on the machine with the screen, `sudo apt install python3-tk`, and the system
+  Python.
+  CORRECTED 2026-09-17. This previously read that nothing needed installing, because uv's CPython
+  ships tkinter, "checked on this box". The check was real and the conclusion was not: it held for
+  one interpreter on one machine. On a second machine uv resolved a CPython linked against Tcl 8.6
+  with no 8.6 library files and the viewer died with `Can't find a usable init.tcl`, while this box
+  had 3.13 with Tcl 9.0 and worked. uv's bundled Tcl varies by build, so tkinter cannot be assumed
+  to work merely because it imports. The file still carries PEP 723 metadata, with `requires-python`
+  lowered to 3.9 so a system Python with a working Tk is eligible rather than passed over.
+- V4: Whether the viewer should stop being a tkinter window and become a page in a browser.
+  Opened 2026-09-17 by the thing that went wrong: tkinter is stdlib, but a working Tcl/Tk is not,
+  and that is the only part of the viewer that does not travel. A browser is on every machine
+  already, needs no package and no `$DISPLAY`, works through the same port forward, and would
+  survive the machine being replaced without a thought. The cost is a second way to draw the screen
+  and a small stdlib HTTP server, against a tkinter version that already runs.
+  Not urgent, and not to be decided before the viewer has been used: the point of this phase is to
+  find out what is wrong by using it, and swapping the toolkit before anyone has looked at a frame
+  would be the same mistake in a new place.
 - ~~V3: Whether the viewer imports `klide` or reimplements the protocol in one self-contained file.~~
   ANSWERED 2026-09-16: one self-contained file, standard library and tkinter only, no `klide` import
   and no third-party dependency. It lives in `viewer/` rather than `src/klide/` because it ships to a

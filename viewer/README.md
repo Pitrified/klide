@@ -25,14 +25,24 @@ and pins its constants, its refresh table and its input codes to klide's. If the
 
 ## Setup
 
-None, beyond having [uv](https://docs.astral.sh/uv/). The file carries
-[PEP 723](https://peps.python.org/pep-0723/) inline script metadata, so `uv run` reads the block at
-the top, builds the environment and runs it.
+One package, on the machine with the screen:
 
-That also removes the one install this used to need. tkinter is in the standard library but Debian
-and Ubuntu split the `_tkinter` extension into a `python3-tk` package, so the system Python cannot
-import it until someone installs that. uv's own CPython ships it, which is checked rather than
-assumed: on this box the system Python fails to import tkinter and uv's does.
+    sudo apt install python3-tk        # Debian, Ubuntu, and WSL distros
+
+Then run it with the system Python. tkinter is in the standard library, but it needs a Tcl/Tk the
+interpreter can find, and that is the one part of this file that does not travel.
+
+The file carries [PEP 723](https://peps.python.org/pep-0723/) metadata and `uv run
+klide_viewer.py` does work where uv's interpreter has a working Tk. It is not dependable, and the
+difference is worth knowing rather than rediscovering. uv fetches a standalone CPython whose
+bundled Tcl differs by build: one machine here resolved 3.13 with Tcl 9.0 and ran; another resolved
+a build linked against Tcl 8.6 with no 8.6 library files and failed with `Can't find a usable
+init.tcl`. `requires-python` is set low on purpose so that a system Python which already has a
+working Tk is eligible rather than passed over.
+
+If it cannot open a window it now says which of the two problems it is, because the remedies are
+opposites: a missing Tcl library means use the system Python, and a missing display means you are
+on the wrong machine.
 
 Under WSL2 with WSLg the window opens as an ordinary Windows window. `echo $DISPLAY` printing
 something is the sign that part is working.

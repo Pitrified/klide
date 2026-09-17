@@ -1,17 +1,24 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.12"
+# requires-python = ">=3.9"
 # dependencies = []
 # ///
 """klide viewer: a window onto the simulator, running wherever you have a screen.
 
-Copy this one file to the machine with the display and run it. Nothing to install: the block above
-is PEP 723 inline script metadata, so `uv run` builds the environment itself, and uv's own CPython
-ships tkinter, which the system one on Debian and Ubuntu splits into a separate package.
+Copy this one file to the machine with the display and run it.
 
-    uv run klide_viewer.py --host 100.126.229.25          # over Tailscale, direct
-    uv run klide_viewer.py --host localhost --port 5000   # through ssh -L
-    ./klide_viewer.py --host ...                          # the shebang runs uv for you
+    python3 klide_viewer.py --host 100.126.229.25         # over Tailscale, direct
+    python3 klide_viewer.py --host localhost --port 5000  # through ssh -L
+
+**Use the system Python**, with `sudo apt install python3-tk` on Debian and Ubuntu.
+tkinter is in the standard library, but it needs a Tcl/Tk the interpreter can
+actually find, and that is the one part of this file that cannot be made to travel.
+
+`uv run klide_viewer.py` works where its interpreter has a working Tk, and is not dependable: uv
+fetches a standalone CPython whose bundled Tcl differs by build. One machine here runs 3.13 with
+Tcl 9.0 and is fine; another picked a build linked against Tcl 8.6 with no 8.6 library files and
+failed with `Can't find a usable init.tcl`. The `requires-python` above is deliberately low so a
+system Python that already has a working Tk is eligible rather than passed over.
 
 `dependencies` is empty and should stay that way. The standard library and tkinter are the whole
 budget: this file has to be runnable by copying it to whatever machine currently has a screen.
@@ -390,18 +397,39 @@ def main(argv: list[str] | None = None) -> int:
     print(f"viewer: connected to {args.host}:{args.port}")
     try:
         viewer = Viewer(sock, args.width, args.height, args.ppi)
-    except tk.TclError as no_screen:
-        # The likeliest way to run this wrong is on the host by mistake, or in a shell with no
-        # display forwarded. A traceback here says nothing about which.
-        print(f"viewer: cannot open a window: {no_screen}", file=sys.stderr)
-        print(
-            "viewer: this has to run on the machine with the screen, not on the host.",
-            file=sys.stderr,
-        )
-        print("viewer: under WSL, check that `echo $DISPLAY` prints something.", file=sys.stderr)
+    except tk.TclError as broken:
+        _explain_tk_failure(broken)
         return 1
     viewer.run()
     return 0
+
+
+def _explain_tk_failure(broken: tk.TclError) -> None:
+    """Say which of the two failures this is, because the remedies are opposites.
+
+    An earlier version printed one message for both and sent someone with a perfectly good display
+    off to check `$DISPLAY`. Tcl says which it is; use that rather than guessing.
+    """
+    detail = str(broken)
+    print(f"viewer: cannot open a window: {detail}", file=sys.stderr)
+    print(f"viewer: running on {sys.executable}", file=sys.stderr)
+    if "init.tcl" in detail or "Tcl wasn" in detail:
+        print(
+            "viewer: this interpreter has tkinter but no Tcl library it can find.",
+            file=sys.stderr,
+        )
+        print(
+            "viewer: use the system Python instead, with `sudo apt install python3-tk`:",
+            file=sys.stderr,
+        )
+        print("viewer:   python3 klide_viewer.py --host ... --port ...", file=sys.stderr)
+        return
+    print("viewer: there is no display to open a window on.", file=sys.stderr)
+    print(
+        "viewer: this runs on the machine with the screen, not on the klide host.",
+        file=sys.stderr,
+    )
+    print("viewer: check that `echo $DISPLAY` prints something.", file=sys.stderr)
 
 
 if __name__ == "__main__":
