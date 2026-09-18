@@ -195,17 +195,34 @@ Recorded as they came, since this is the phase that exists to collect them.
 
 Five things came out of the first sitting and all five are fixed: the buttons that looked dead, the
 four-second delay, true size being nine per cent small, the jagged text, and the density box not
-re-fitting.
+re-fitting. Every one of them was about the instrument rather than about the thing it was built to
+judge.
 
-Every one of them is about the instrument rather than about the thing it was built to judge. The
-viewer now works; nothing has yet been said about whether the design it displays is any good. So
-the "done when" of this phase is not met, and it would be a mistake to mark it met on the strength
-of a working viewer, since that is exactly the self-referential move AD9 warns about.
+Then the design itself was looked at, which is what the phase exists for, and produced four
+answers and two faults.
 
-What is still wanted, in the order it matters: whether the body text is comfortable at 107 mm,
-whether six turns is the right window, whether a collapsed tool call says enough to be useful, and
-whether the panel sitting two-thirds empty whenever recent turns are short shell calls is a waste of
-screen or a rest for the eye.
+Answered: the body text is comfortable at 107 mm. A collapsed tool call says enough to be worth its
+line, with opening it parked as a later idea. The empty bottom two thirds is waste, not rest. The
+six-turn window is beside the point, because it should not be a count at all.
+
+**Markdown was only half rendered.** Block level worked and inline did not, so `**bold**` showed
+its asterisks, `` `code` `` showed its backticks, and a table was reflowed into prose as
+`| finding | fix | | --- | --- | ...`. Found by reading a real message on the panel, which no gate
+could have done: the fixture contained no bold, no code span and no table, so every gate was green
+on content that never exercised the feature. That is AD9 in one sentence.
+Fixed: a laid-out line holds styled runs, wrapping spans them, tables get columns when two of them
+fit and stack when they do not. The fixture now carries all of it, so the views gate can see it.
+
+**The screen was filled by a turn count rather than by its own height.** Six turns of short shell
+calls left two thirds of the panel blank. Fixed: the fill lays out more turns than fit and keeps
+the last screenful, so the newest sits on the bottom margin, older ones move up as it arrives, and
+the oldest is clipped at the top rather than dropped. A page turn now moves by however many turns
+were on the screen. Scrolling behaviour is deliberately still open; live mode was the target.
+
+The objection worth recording, because it was checked rather than waved through: shifting everything
+up on each new turn sounds like it would make every update a full-screen refresh, which on a panel
+that claims 450 ms for a flashing redraw would be a real cost. It does not, because the view already
+slid. Patches were 1264x1041 to 1264x1517 before and 1264x1512 after, on a 1680 tall screen.
 
 ## Out of scope
 

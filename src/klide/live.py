@@ -25,11 +25,11 @@ from klide.device import Device
 from klide.frame import Frame
 from klide.host import DEFAULT_PORT, serve
 from klide.panel import KOBO_LIBRA_2, Panel
-from klide.render import Metrics, render_lines
+from klide.render import Metrics
+from klide.serve import LiveState, render
 from klide.serve import run as serve_live
 from klide.stream import Coalescer, dirty_rectangle, pick_waveform
 from klide.transcript import Turn, read, tail
-from klide.views import conversation
 
 ROOT = Path(__file__).resolve().parents[2]
 PROJECTS = Path.home() / ".claude" / "projects"
@@ -60,15 +60,14 @@ def newest_transcript(project: Path) -> Path:
     return files[0]
 
 
-def page_for(turns: list[Turn], panel: Panel, metrics: Metrics, tail_turns: int) -> Frame:
-    """Render the conversation, most recent turns first in the sense that matters.
+def page_for(turns: list[Turn], panel: Panel, metrics: Metrics, cap: int | None) -> Frame:
+    """Render the conversation the way the live loop does, so `--once` shows what it would show.
 
-    Only the last `tail_turns` are drawn. A long session lays out to dozens of screens and the
-    reader of a second screen wants what just happened, not the whole history; the conversation
-    list view is where a whole session gets opened deliberately.
+    The screen fills from the bottom with as many recent turns as fit. A long session lays out to
+    dozens of screens and the reader of a second screen wants what just happened, not the whole
+    history; the conversation list view is where a whole session gets opened deliberately.
     """
-    column = conversation(turns[-tail_turns:], metrics, title="live")
-    return render_lines(column.lines, panel, metrics)
+    return render(LiveState(turns=list(turns), cap=cap), panel, metrics)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -80,7 +79,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--seconds", type=float, default=None, help="how long to watch (default: until stopped)"
     )
-    parser.add_argument("--turns", type=int, default=6, help="how many recent turns to draw")
+    parser.add_argument(
+        "--turns",
+        type=int,
+        default=None,
+        help="stop filling after this many turns; the default is however many fit the screen",
+    )
     parser.add_argument(
         "--once",
         action="store_true",
@@ -158,7 +162,7 @@ def _serve(path: Path, panel: Panel, metrics: Metrics, args: argparse.Namespace)
     try:
         with serve((args.bind, args.port), timeout=args.wait) as link:
             print("live: viewer connected")
-            state = serve_live(link, path, panel, metrics, window=args.turns, seconds=args.seconds)
+            state = serve_live(link, path, panel, metrics, cap=args.turns, seconds=args.seconds)
     except TimeoutError:
         print(f"live: no viewer connected within {args.wait:.0f}s", file=sys.stderr)
         return 1

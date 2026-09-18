@@ -32,45 +32,51 @@ from klide.panel import Panel
 from klide.protocol import ProtocolError
 from klide.render import Metrics, render_lines
 from klide.stream import Coalescer, dirty_rectangle, pick_waveform
+from klide.text import Line
 from klide.transcript import Follower, Turn
-from klide.views import conversation
+from klide.views import conversation, lay_conversation
 
 
 @dataclass
 class LiveState:
     """What the viewer is looking at.
 
-    `offset` counts turns back from the newest. Zero means the live tail, which is where a second
-    screen wants to sit; pressing back walks into history and new turns stop scrolling the view out
-    from under the reader.
+    `offset` counts turns back from the newest, and the bottom of the screen sits there. Zero means
+    the live tail; pressing back walks into history and new turns stop scrolling the view out from
+    under the reader.
+
+    There is no window size. A fixed count of turns left the bottom two thirds of the panel blank
+    whenever the recent turns were short shell calls, which is what a person sitting with it said
+    first. The screen is filled instead: as many turns as fit, newest at the bottom, the oldest
+    clipped at the top the way a terminal clips. `shown` is how many that turned out to be on the
+    last render, and it is what a page turn moves by, so a press moves by a screenful whatever a
+    screenful happens to be.
     """
 
-    window: int = 6
     offset: int = 0
     turns: list[Turn] = field(default_factory=list)
+    shown: int = 0
+    #: A ceiling on how far back the fill will reach, for tests and for the browser harness. None
+    #: means however many fit.
+    cap: int | None = None
 
     @property
     def following(self) -> bool:
         return self.offset == 0
 
-    def visible(self) -> list[Turn]:
-        if not self.turns:
-            return []
-        end = len(self.turns) - self.offset
-        return self.turns[max(0, end - self.window) : max(1, end)]
-
     def page_back(self) -> bool:
         """Older turns. Returns whether anything moved."""
-        room = max(0, len(self.turns) - self.window)
+        step = max(1, self.shown)
+        room = max(0, len(self.turns) - self.shown)
         if self.offset >= room:
             return False
-        self.offset = min(room, self.offset + self.window)
+        self.offset = min(room, self.offset + step)
         return True
 
     def page_forward(self) -> bool:
         if self.offset == 0:
             return False
-        self.offset = max(0, self.offset - self.window)
+        self.offset = max(0, self.offset - max(1, self.shown))
         return True
 
 
@@ -137,11 +143,8 @@ def explain(moved: bool, state: LiveState) -> str:
     """
     if moved:
         return f"redraw, now {state.offset} turns back of {len(state.turns)}"
-    if state.offset == 0 and len(state.turns) <= state.window:
-        return (
-            f"nothing to page to: {len(state.turns)} turns fit in a window of {state.window},"
-            " so there is no history behind this screen"
-        )
+    if state.offset == 0 and len(state.turns) <= state.shown:
+        return f"nothing to page to: all {len(state.turns)} turns are on the screen already"
     if state.offset == 0:
         return f"already at the live tail of {len(state.turns)} turns"
     return f"already at the oldest of {len(state.turns)} turns"
@@ -156,9 +159,50 @@ def title_for(state: LiveState) -> str:
     return "live" if state.following else f"history, {state.offset} back"
 
 
+def fill(state: LiveState, metrics: Metrics) -> list[Line]:
+    """The screen: a header at the top, and as many turns as fit sitting on the bottom margin.
+
+    More turns are laid out than will fit and the last screenful of lines is kept, rather than
+    turns being measured one at a time. Laying out the whole set at once is what keeps the speaker
+    labels right, since whether a turn is labelled depends on the turn before it, and it makes the
+    oldest turn on screen clip at the top instead of vanishing.
+
+    The candidate set doubles until it overflows, so the work is proportional to what ends up on
+    screen and not to the fifteen hundred turns behind it.
+    """
+    subtitle = f"{len(state.turns)} turns"
+    title = title_for(state)
+    head = len(conversation([], metrics, title=title, subtitle=subtitle).lines)
+    available = max(0, metrics.lines_per_screen - head)
+
+    end = len(state.turns) - state.offset
+    take = 8
+    body: list[Line] = []
+    starts: list[int] = []
+    while True:
+        start = max(0, end - min(take, state.cap or take))
+        column, starts = lay_conversation(state.turns[start:end], metrics, title, subtitle)
+        body = column.lines[head:]
+        reached_all = start == 0 or (state.cap is not None and take >= state.cap)
+        if len(body) >= available or reached_all:
+            break
+        take *= 2
+
+    while body and not body[-1].text:
+        # The view puts a blank line after every turn. Keeping it would leave the newest line
+        # floating one line above the bottom margin, which is the one place it must not float.
+        body.pop()
+    tail = body[-available:] if available else []
+    cut = len(body) - len(tail)
+    ends = [start - head for start in starts[1:]] + [len(body)]
+    state.shown = sum(1 for stop in ends if stop > cut)
+
+    blank = Line.of("", metrics.body())
+    return column.lines[:head] + [blank] * (available - len(tail)) + tail
+
+
 def render(state: LiveState, panel: Panel, metrics: Metrics) -> Frame:
-    column = conversation(state.visible(), metrics, title=title_for(state))
-    return render_lines(column.lines, panel, metrics)
+    return render_lines(fill(state, metrics), panel, metrics)
 
 
 def run(
@@ -166,12 +210,12 @@ def run(
     transcript: Path,
     panel: Panel,
     metrics: Metrics,
-    window: int = 6,
+    cap: int | None = None,
     seconds: float | None = None,
     tick: float = 0.05,
 ) -> LiveState:
     """Serve one viewer until it disconnects, or until `seconds` runs out."""
-    state = LiveState(window=window)
+    state = LiveState(cap=cap)
     follower = Follower(transcript)
     coalescer = Coalescer()
     inbox: queue.Queue[InputEvent | None] = queue.Queue()

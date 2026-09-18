@@ -68,8 +68,33 @@ def _header(title: str, subtitle: str, column: Column, metrics: Metrics) -> None
 _ROLE_LABEL = {Role.USER: "you", Role.ASSISTANT: "claude", Role.SYSTEM: "system"}
 
 
-def conversation(turns: list[Turn], metrics: Metrics, title: str = "conversation") -> Column:
-    """The main view: a transcript as something to read.
+def conversation(
+    turns: list[Turn],
+    metrics: Metrics,
+    title: str = "conversation",
+    subtitle: str | None = None,
+) -> Column:
+    """The main view, for callers that only want the lines."""
+    return lay_conversation(turns, metrics, title, subtitle)[0]
+
+
+def lay_conversation(
+    turns: list[Turn],
+    metrics: Metrics,
+    title: str = "conversation",
+    subtitle: str | None = None,
+) -> tuple[Column, list[int]]:
+    """The main view, and where in the column each turn began.
+
+    The starts are what lets a caller fill a screen from the bottom: it lays out more turns than
+    fit, keeps the last screenful of lines, and needs to know how many turns that covered. Doing it
+    this way rather than laying out one turn at a time keeps the speaker labels right, since
+    whether a turn is labelled depends on the turn before it.
+
+    Tool calls are one line each, not folded out. On a screen this size the useful thing is that a
+    tool ran and what it touched, and a reader who wants the output has the file open on the other
+    machine. Tool results are skipped for the same reason: they are usually long and rarely the
+    thing being followed.
 
     Tool calls are one line each, not folded out. On a screen this size the useful thing is that a
     tool ran and what it touched, and a reader who wants the output has the file open on the other
@@ -77,8 +102,9 @@ def conversation(turns: list[Turn], metrics: Metrics, title: str = "conversation
     thing being followed.
     """
     column = metrics.column()
-    _header(title, f"{len(turns)} turns", column, metrics)
+    _header(title, f"{len(turns)} turns" if subtitle is None else subtitle, column, metrics)
 
+    starts: list[int] = []
     spoken: Role | None = None
     for turn in turns:
         before = len(column.lines)
@@ -96,15 +122,17 @@ def conversation(turns: list[Turn], metrics: Metrics, title: str = "conversation
             # real session, and labelling each one "you" above nothing fills the screen with
             # headings for content that was deliberately left out.
             continue
+        starts.append(before)
         if turn.role is not spoken:
             # Only when the speaker changes. A run of assistant turns is one answer as far as a
             # reader is concerned, and a label above each would be five headings for one thought.
             column.lines.insert(
-                before, Line(_ROLE_LABEL.get(turn.role, turn.role.value), metrics.bold(MUTED))
+                before,
+                Line.of(_ROLE_LABEL.get(turn.role, turn.role.value), metrics.bold(MUTED)),
             )
             spoken = turn.role
         column.blank(metrics.body())
-    return column
+    return column, starts
 
 
 def _tool_line(tool: str, detail: str) -> str:

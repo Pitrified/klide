@@ -1,8 +1,8 @@
 """Serving a live session to a viewer, checked without a viewer.
 
-The window needs a person, and none of what is under it does. What is checked here is the part that
+A screen needs a person, and none of what is under it does. What is checked here is the part that
 would otherwise only be found by pressing a button and seeing nothing happen: where the history
-window sits, what a press moves, and that a real client on a real socket receives real frames.
+screen sits, what a press moves, and that a real client on a real socket receives real frames.
 """
 
 import json
@@ -16,9 +16,10 @@ from klide.input import Button, Direction, InputEvent
 from klide.panel import KOBO_LIBRA_2
 from klide.protocol import encode_input, read_frame
 from klide.render import Metrics
-from klide.serve import LiveState, apply_event, render, title_for
+from klide.serve import LiveState, apply_event, fill, render, title_for
 from klide.serve import run as serve_live
 from klide.transcript import Block, BlockKind, Role, Turn
+from klide.views import conversation
 
 METRICS = Metrics.for_panel(KOBO_LIBRA_2)
 
@@ -33,59 +34,132 @@ def turns(count: int) -> list[Turn]:
 # Where the reader is looking
 
 
+def fills(state: LiveState) -> list[str]:
+    """The screen as text, header and padding dropped, so a test can read what is on it."""
+    lines = fill(state, METRICS)
+    header = conversation([], METRICS, title=title_for(state), subtitle=f"{len(state.turns)} turns")
+    return [line.text for line in lines[len(header.lines) :] if line.text]
+
+
+def test_the_screen_is_filled_rather_than_a_fixed_number_of_turns() -> None:
+    """The fault a person found: short shell turns left the bottom two thirds of the panel blank.
+
+    Six turns was a constant, and a constant cannot know how tall a turn is.
+    """
+    state = LiveState(turns=turns(200))
+    lines = fill(state, METRICS)
+    assert len(lines) == METRICS.lines_per_screen, "the screen is filled to its last line"
+    assert state.shown > 6, f"only {state.shown} turns on a screen that holds more"
+
+
+def test_the_newest_turn_sits_on_the_bottom_margin() -> None:
+    # The point of filling from the bottom: the newest thing is always in the same place.
+    state = LiveState(turns=turns(200))
+    assert fills(state)[-1] == "turn 199"
+
+
+def test_a_short_session_still_sits_at_the_bottom() -> None:
+    # Too little to fill the screen, so the gap goes above the text rather than below it.
+    state = LiveState(turns=turns(2))
+    lines = fill(state, METRICS)
+    assert lines[-1].text == "turn 1"
+    assert not lines[-3].text or lines[-3].text == "turn 0"
+
+
+def test_a_new_turn_pushes_the_oldest_off_the_top() -> None:
+    state = LiveState(turns=turns(200))
+    before = fills(state)
+    state.turns.append(
+        Turn(role=Role.ASSISTANT, blocks=(Block(BlockKind.TEXT, "the newest thing"),))
+    )
+    after = fills(state)
+    assert after[-1] == "the newest thing"
+    assert after[0] != before[0], "the top line moved up"
+    assert before[-1] in after, "what was newest is still on screen, higher up"
+
+
+def test_the_oldest_turn_on_screen_is_clipped_rather_than_dropped() -> None:
+    """A tall turn at the top shows its end, the way a terminal shows the end of a long line.
+
+    Dropping it instead would leave a blank band at the top whenever the oldest turn that nearly
+    fit did not quite, which is the same wasted screen in a new place.
+    """
+    tall = Turn(role=Role.ASSISTANT, blocks=(Block(BlockKind.TEXT, "long\n" * 60),))
+    state = LiveState(turns=[tall, *turns(3)])
+    lines = fill(state, METRICS)
+    assert len(lines) == METRICS.lines_per_screen
+    assert lines[-1].text == "turn 2"
+
+
 def test_a_new_session_follows_the_live_tail() -> None:
-    state = LiveState(window=4, turns=turns(10))
+    state = LiveState(turns=turns(10))
     assert state.following
-    assert [t.text for t in state.visible()] == ["turn 6", "turn 7", "turn 8", "turn 9"]
+    assert fills(state)[-1] == "turn 9"
 
 
-def test_paging_back_walks_into_history() -> None:
-    state = LiveState(window=4, turns=turns(10))
+def test_paging_back_walks_into_history_by_a_screenful() -> None:
+    state = LiveState(turns=turns(200))
+    fill(state, METRICS)
+    screenful = state.shown
     assert state.page_back()
     assert not state.following
-    assert [t.text for t in state.visible()] == ["turn 2", "turn 3", "turn 4", "turn 5"]
+    assert state.offset == screenful, "a page is however many turns were on the screen"
+    assert fills(state)[-1] == f"turn {199 - screenful}"
 
 
 def test_paging_back_stops_at_the_beginning() -> None:
-    state = LiveState(window=4, turns=turns(6))
-    assert state.page_back()
+    state = LiveState(turns=turns(200))
+    fill(state, METRICS)
+    while state.page_back():
+        fill(state, METRICS)
     assert not state.page_back()  # nothing moved, so nothing is redrawn
 
 
+def test_paging_back_does_nothing_when_it_all_fits() -> None:
+    state = LiveState(turns=turns(2))
+    fill(state, METRICS)
+    assert not state.page_back(), "there is no history behind a screen that holds everything"
+
+
 def test_paging_forward_returns_to_the_tail() -> None:
-    state = LiveState(window=4, turns=turns(10))
+    state = LiveState(turns=turns(200))
+    fill(state, METRICS)
     state.page_back()
     assert state.page_forward()
     assert state.following
 
 
 def test_paging_forward_at_the_tail_does_nothing() -> None:
-    state = LiveState(window=4, turns=turns(10))
+    state = LiveState(turns=turns(10))
     assert not state.page_forward()
 
 
 def test_a_tap_returns_to_the_tail_from_anywhere() -> None:
-    state = LiveState(window=2, turns=turns(20))
+    state = LiveState(turns=turns(200))
+    fill(state, METRICS)
     for _ in range(4):
         state.page_back()
+        fill(state, METRICS)
     assert not state.following
     assert apply_event(InputEvent.tap(600, 800), state)
     assert state.following
 
 
 def test_a_tap_at_the_tail_changes_nothing() -> None:
-    state = LiveState(window=2, turns=turns(20))
+    state = LiveState(turns=turns(20))
     assert not apply_event(InputEvent.tap(600, 800), state)
 
 
 def test_the_buttons_page_both_ways() -> None:
-    state = LiveState(window=2, turns=turns(20))
+    state = LiveState(turns=turns(200))
+    fill(state, METRICS)
     assert apply_event(InputEvent.press(Button.PAGE_BACK), state)
     assert apply_event(InputEvent.press(Button.PAGE_FORWARD), state)
 
 
 def test_a_swipe_pages_like_a_button() -> None:
-    state = LiveState(window=2, turns=turns(20))
+    state = LiveState(turns=turns(200))
+    fill(state, METRICS)
     assert apply_event(InputEvent.swipe(Direction.LEFT), state)
     assert apply_event(InputEvent.swipe(Direction.RIGHT), state)
 
@@ -96,12 +170,20 @@ def test_an_empty_session_renders_rather_than_failing() -> None:
     assert frame.is_full_panel
 
 
+def test_the_cap_limits_how_far_back_the_fill_reaches() -> None:
+    # The knob the browser harness uses to force a small screenful.
+    state = LiveState(turns=turns(200), cap=3)
+    assert fills(state) == ["claude", "turn 197", "turn 198", "turn 199"]
+
+
 def test_the_title_says_when_you_are_in_history() -> None:
     # Otherwise a reader who paged back cannot tell a quiet session from a stale screen.
-    state = LiveState(window=2, turns=turns(10))
+    state = LiveState(turns=turns(200))
+    fill(state, METRICS)
     assert title_for(state) == "live"
+    screenful = state.shown
     state.page_back()
-    assert title_for(state) == "history, 2 back"
+    assert title_for(state) == f"history, {screenful} back"
 
 
 # Over a real socket
@@ -136,7 +218,7 @@ def test_a_client_receives_a_frame_and_its_presses_are_acted_on(tmp_path: Path) 
 
     def host() -> None:
         with serve(("127.0.0.1", port), timeout=10) as link:
-            serve_live(link, transcript, KOBO_LIBRA_2, METRICS, window=3, seconds=5.0)
+            serve_live(link, transcript, KOBO_LIBRA_2, METRICS, cap=3, seconds=5.0)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         serving = pool.submit(host)
@@ -160,5 +242,5 @@ def test_a_press_is_answered_without_waiting_for_the_coalescer() -> None:
     # A person pressing a button should not wait behind a transcript poll. The loop answers a press
     # at once and only new content waits to settle, which is checked here by the state change being
     # immediate rather than by timing anything.
-    state = LiveState(window=2, turns=turns(20))
+    state = LiveState(turns=turns(20))
     assert apply_event(InputEvent.press(Button.PAGE_BACK), state) is True

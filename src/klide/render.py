@@ -61,6 +61,11 @@ class Metrics:
     def column_width(self) -> int:
         return self.panel.width - 2 * self.margin
 
+    @property
+    def lines_per_screen(self) -> int:
+        """How many lines fit between the margins. The unit a screenful is counted in."""
+        return (self.panel.height - 2 * self.margin) // self.line_height
+
     def body(self, grey: int = BODY_GREY) -> Style:
         return Style(face=Face.BODY, size_px=self.body_px, grey=grey)
 
@@ -73,6 +78,15 @@ class Metrics:
     def mono(self, grey: int = BODY_GREY) -> Style:
         return Style(face=Face.MONO, size_px=self.mono_px, grey=grey, preformatted=True)
 
+    def code_span(self, grey: int = BODY_GREY) -> Style:
+        """Inline code. Monospace like a block, but not preformatted.
+
+        The difference matters: a code block keeps its own line breaks and is cut when too wide,
+        because its alignment means something. `a code span` is part of a sentence and wraps with
+        the prose around it.
+        """
+        return Style(face=Face.MONO, size_px=self.mono_px, grey=grey)
+
     def column(self) -> Column:
         return Column(width=self.column_width)
 
@@ -83,11 +97,15 @@ def grey_to_8bit(grey: int, panel: Panel) -> int:
 
 
 def render_lines(
-    lines: list[Line], panel: Panel, metrics: Metrics | None = None, height: int | None = None
+    lines: list[Line],
+    panel: Panel,
+    metrics: Metrics | None = None,
+    height: int | None = None,
 ) -> Frame:
     """Draw laid-out lines as a frame, one line per line, clipped at the bottom.
 
     `height` larger than the panel produces a page the device pans inside without a round trip.
+
     """
     m = metrics or Metrics.for_panel(panel)
     canvas_height = panel.height if height is None else height
@@ -98,13 +116,20 @@ def render_lines(
     for line in lines:
         if y + m.line_height > canvas_height - m.margin:
             break
-        if line.text:
-            draw.text(
-                (m.margin + line.indent, y),
-                line.text,
-                font=line.style.font(),
-                fill=grey_to_8bit(line.style.grey, panel),
-            )
+        # Float, and kept float across the runs on purpose: rounding each run's advance would
+        # accumulate a drift along a line that has several, which is visible as uneven spacing
+        # around emphasis.
+        x: float = m.margin + line.indent
+        for run in line.runs:
+            x += run.pad
+            if run.text:
+                draw.text(
+                    (x, y),
+                    run.text,
+                    font=run.style.font(),
+                    fill=grey_to_8bit(run.style.grey, panel),
+                )
+                x += run.style.font().getlength(run.text)
         y += m.line_height
     return Frame.from_image(image, panel)
 
@@ -135,7 +160,7 @@ def rule(metrics: Metrics) -> Line:
     """
     style = Style(face=Face.MONO, size_px=metrics.mono_px, grey=RULE, preformatted=True)
     count = int(metrics.column_width / style.font().getlength("─"))
-    return Line("─" * max(1, count), style)
+    return Line.of("─" * max(1, count), style)
 
 
 def render_text(

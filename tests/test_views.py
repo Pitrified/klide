@@ -8,7 +8,7 @@ from klide.document import code, diff, lexer_for, line_grey, markdown
 from klide.fonts import FAINT, INK, MUTED, Face
 from klide.panel import KOBO_LIBRA_2
 from klide.render import Metrics
-from klide.text import Column
+from klide.text import Column, measure
 from klide.transcript import Block, BlockKind, Role, Turn
 from klide.viewcmd import CHANGED, SESSIONS, TREE, build
 from klide.views import View, conversation
@@ -68,12 +68,69 @@ def test_a_quote_loses_its_marker_and_is_muted() -> None:
     assert line.style.grey == MUTED
 
 
-def test_inline_emphasis_is_not_parsed_which_is_a_known_gap() -> None:
-    # A laid-out line carries one style, so inline runs would need layout to carry several. The
-    # asterisks surviving is the honest symptom of that, not an accident.
+def test_inline_emphasis_is_drawn_rather_than_spelled_out() -> None:
+    """The gap a person found first, by reading a real message on the panel.
+
+    This test used to assert the opposite and call it a known gap: a laid-out line carried one
+    style, so the asterisks survived. They are the first thing anyone sees.
+    """
     column = METRICS.column()
     markdown("a **bold** word", column, METRICS)
-    assert "**bold**" in texts(column)[0]
+    line = column.lines[0]
+    assert line.text == "a bold word", "the markers are consumed, not drawn"
+    bold = [run for run in line.runs if run.style.face is Face.BOLD]
+    assert [run.text for run in bold] == ["bold"]
+
+
+def test_a_code_span_is_monospace_but_still_wraps_with_its_sentence() -> None:
+    # Monospace like a code block, not preformatted like one: a span is part of a sentence and has
+    # to wrap with it rather than being cut when the line runs out.
+    column = METRICS.column()
+    markdown("run `uv run klide-live` to watch", column, METRICS)
+    spans = [run for run in column.lines[0].runs if run.style.face is Face.MONO]
+    assert [run.text for run in spans] == ["uv run klide-live"]
+    assert not spans[0].style.preformatted
+
+
+def test_a_link_keeps_its_text_and_drops_its_url() -> None:
+    # There is no browser on the device and nothing to click, so a URL is noise costing most of a
+    # line. Recorded as a decision rather than left to be rediscovered.
+    column = METRICS.column()
+    markdown("see [the protocol](https://example.com/docs/protocol.md) for why", column, METRICS)
+    assert column.lines[0].text == "see the protocol for why"
+
+
+def test_italic_markers_are_removed_even_though_there_is_no_italic_face() -> None:
+    # Only three faces are vendored. Drawing italic as bold would be a lie about which words were
+    # emphasised, so the markers go and the text stays body weight.
+    column = METRICS.column()
+    markdown("a *quiet* word", column, METRICS)
+    line = column.lines[0]
+    assert line.text == "a quiet word"
+    assert all(run.style.face is Face.BODY for run in line.runs)
+
+
+def test_underscores_in_identifiers_are_left_alone() -> None:
+    """Why underscore emphasis is not parsed at all.
+
+    This content is full of `klide_viewer` and `__init__`, and far emptier of `_emphasis_`. Parsing
+    underscores would mangle the common case to serve the rare one.
+    """
+    column = METRICS.column()
+    markdown("klide_viewer.py defines __init__ and _pump", column, METRICS)
+    assert column.lines[0].text == "klide_viewer.py defines __init__ and _pump"
+
+
+def test_emphasis_wraps_across_a_line_break_like_any_other_word() -> None:
+    # The reason wrapping had to be rewritten to span runs: a line ending inside bold text has to
+    # know how wide everything before it already is.
+    column = METRICS.column()
+    markdown("word " * 20 + "**bold at the end of a long paragraph**", column, METRICS)
+    assert len(column.lines) > 1
+    for line in column.lines:
+        width = sum(measure(run.text, run.style) for run in line.runs)
+        assert width <= column.width, f"{line.text!r} overflows by {width - column.width:.0f}px"
+    assert "bold at the end of a long paragraph" in " ".join(texts(column))
 
 
 # Code

@@ -93,20 +93,36 @@ sending the whole page would have.
 A2 is never chosen for text despite being the fastest mode. It goes from black and white to black
 and white only, and antialiased text is neither.
 
+## Markdown
+
+Block level and inline: headings, paragraphs, bullets, numbered lists, quotes, fenced code, tables,
+and within a line `**bold**`, `` `code spans` `` and links.
+
+Inline used to be missing, and the note here said it was worth doing when something needed it.
+Something did, immediately: the first person to read a real message on the panel saw the asterisks
+and backticks before anything else. A laid-out line holds a list of styled runs now, and wrapping
+spans them, which is what that was waiting on.
+
+Two things are deliberately not rendered, and both are decisions rather than gaps. **Italic** is
+dropped rather than faked, because no italic face is vendored and drawing it bold would be a lie
+about which words were emphasised. **Link URLs** are dropped and the text kept, because the device
+has no browser and a URL costs most of a 47-character line.
+
+Tables get real columns when there are two of them and the widths work out, with the header in bold
+over a rule. Anything wider becomes one block per row, the first cell in bold and the rest indented
+beneath it. Width decides which, not a preference: 47 characters does not hold three columns of
+anything worth reading.
+
 ## Known gaps
-
-Both are the same gap seen twice, and both are cheap to describe and not cheap to fix.
-
-**Inline emphasis is not parsed.** `**bold**` renders with its asterisks. Markdown is handled at
-block level: headings, paragraphs, bullets, quotes and fenced code.
 
 **Highlighting is per line, not per token.** A line takes the shade of its most prominent token,
 which is enough to tell a comment from a statement at a glance and is what highlighting is for at
 this size.
 
-Both exist because a laid-out line carries one style. Runs within a line would need `Line` to hold
-a list of styled spans and the renderer to advance an x position across them. Worth doing when
-something needs it, which nothing does yet.
+This used to share a cause with inline emphasis, that a laid-out line carried one style. That cause
+is gone: a line holds runs now and the renderer advances an x position across them, so per-token
+shading is a decision rather than a limitation. It stays per line because nothing has asked for
+more, and because sixteen greys on a dithered panel do not hold many distinguishable shades.
 
 **Thinking has no content to show.** Every thinking block in every transcript read on 2026-09-16
 (219 of them) had an empty `thinking` field with the content in an opaque signature. The

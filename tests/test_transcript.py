@@ -21,6 +21,7 @@ def test_the_fixture_parses() -> None:
         Role.ASSISTANT,
         Role.USER,
         Role.ASSISTANT,
+        Role.ASSISTANT,
     ]
 
 

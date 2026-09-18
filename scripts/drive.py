@@ -185,7 +185,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=5100, help="klide's port, when starting one")
     parser.add_argument("--http-port", type=int, default=8100, help="the viewer's port")
     parser.add_argument("--transcript", help="a .jsonl for the host to render")
-    parser.add_argument("--turns", type=int, default=6, help="turns the host draws")
+    parser.add_argument(
+        "--turns",
+        type=int,
+        default=None,
+        help="cap how far back the host fills; the default is however many fit the screen",
+    )
     parser.add_argument("--headed", action="store_true", help="show the browser window")
     parser.add_argument(
         "--browser",
@@ -202,16 +207,9 @@ def main(argv: list[str] | None = None) -> int:
         drive(args, args.url)
         return 0
 
-    host = [
-        "uv",
-        "run",
-        "klide-live",
-        "--serve",
-        "--port",
-        str(args.port),
-        "--turns",
-        str(args.turns),
-    ]
+    host = ["uv", "run", "klide-live", "--serve", "--port", str(args.port)]
+    if args.turns is not None:
+        host += ["--turns", str(args.turns)]
     if args.transcript:
         host += ["--transcript", args.transcript]
     viewer = [
