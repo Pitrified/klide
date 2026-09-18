@@ -25,7 +25,7 @@ The app being built alongside is tracked in [`../04_klide_app/00_start.md`](../0
 | 1  | Adopt practices         | [`01_adopt_practices.md`](01_adopt_practices.md)           | done |
 | 2  | Guardrails              | [`02_guardrails.md`](02_guardrails.md)                     | done |
 | 3  | Interaction contract    | [`03_interaction_contract.md`](03_interaction_contract.md) | planned |
-| 4  | Diary and session review| [`04_diary_and_review.md`](04_diary_and_review.md)         | planned |
+| 4  | Diary and session review| [`04_diary_and_review.md`](04_diary_and_review.md)         | in progress |
 | 5  | First unsupervised run  | [`05_unsupervised_run.md`](05_unsupervised_run.md)         | planned |
 
 Status values: draft / planned / in progress / done / superseded / discarded.
@@ -46,3 +46,5 @@ Append-only. Newest at the bottom.
 
 - 2026-09-16 : phase 1 done. A fresh session ran the four checks the phase was waiting on: `principles` and `deslopify` both appear in the skill list, `principles` invokes and returns its four rules; the repo instructions carry the Planning section and the mannered-writing paragraphs; `scripts/check.sh` passes cold on 32 files with no findings. Nothing was wrong, so the phase closed unchanged
 - 2026-09-17 : detour, no phase touched. Asked how aihero.dev's `/grill-me` would fit this repo's planning; found it fills the undocumented step before `00_start.md` and that its statelessness contradicts the reason the plan folders exist. Spun the reasoning and five open questions off to `05_grill_me/` as a draft, parked
+- 2026-09-18 : phase 4 started, by running a review rather than by designing the diary first. Mined the two sessions that built the viewer, 34 human turns over three days, of which 12 were corrections. Five recurring patterns, not fourteen separate failures: the weakest check that could pass, correct here and wrong where it runs, green gates over content the fixture never exercises, one name answering two questions, and diagnosis without instrumentation. The entry shape is fixed in `meta/diary/README.md` from the five headings this phase already named. One finding became a test the same day, that the view fixture exercises every markdown construct the renderer supports, shown failing by stripping the bold out of the fixture; two more are proposed edits to the instructions rather than applied, because they change how every session behaves. The phase is not done: the review procedure and its cadence are still by hand
+

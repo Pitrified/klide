@@ -4,14 +4,19 @@ These check content and style, not pixels. What the pages look like is the `view
 split is what lets a layout question be asked without rendering anything.
 """
 
+import re
+from pathlib import Path
+
 from klide.document import code, diff, lexer_for, line_grey, markdown
 from klide.fonts import FAINT, INK, MUTED, Face
 from klide.panel import KOBO_LIBRA_2
 from klide.render import Metrics
 from klide.text import Column, measure
-from klide.transcript import Block, BlockKind, Role, Turn
+from klide.transcript import Block, BlockKind, Role, Turn, read
 from klide.viewcmd import CHANGED, SESSIONS, TREE, build
 from klide.views import View, conversation
+
+FIXTURE = Path(__file__).parent / "fixtures" / "transcript.jsonl"
 
 METRICS = Metrics.for_panel(KOBO_LIBRA_2)
 
@@ -300,3 +305,39 @@ def test_a_single_line_tool_argument_gains_no_marker() -> None:
     turn = Turn(role=Role.ASSISTANT, blocks=(Block(BlockKind.TOOL_USE, "ls -la", tool="Bash"),))
     line = next(t for t in texts(conversation([turn], METRICS)) if "Bash" in t)
     assert line == "Bash  ls -la"
+
+
+def test_the_fixture_exercises_every_construct_the_renderer_supports() -> None:
+    """A reference gate covers exactly what its fixture contains, and nothing else.
+
+    Two design faults shipped behind green gates for this reason. Body text rendered at 6.2 pt for
+    three phases, and markdown was rendered at block level only, so bold showed its asterisks and a
+    table was reflowed into prose. Both were found by a person reading a screen, because the
+    fixture had no small text and no table for a reference to differ from.
+
+    This does not check that any of it renders well. It checks that the `views` gate is looking at
+    a page where a change to any of these would move a pixel.
+    """
+    source = "\n".join(
+        block.text
+        for turn in read(FIXTURE)
+        for block in turn.blocks
+        if block.kind is BlockKind.TEXT
+    )
+    constructs = {
+        "heading": re.compile(r"^#{1,6}\s+\S", re.M),
+        "bullet": re.compile(r"^\s*[-*+]\s+\S", re.M),
+        "fenced code": re.compile(r"^\s*```", re.M),
+        "table row": re.compile(r"^\s*\|.+\|\s*$", re.M),
+        "table divider": re.compile(r"^\s*\|[\s:|-]+\|\s*$", re.M),
+        "bold": re.compile(r"\*\*[^*]+\*\*"),
+        "code span": re.compile(r"`[^`\n]+`"),
+        "link": re.compile(r"\[[^\]]+\]\([^)]*\)"),
+        "italic": re.compile(r"(?<!\*)\*[^*\s][^*]*\*(?!\*)"),
+        "underscored identifier": re.compile(r"\w_\w"),
+    }
+    missing = sorted(name for name, pattern in constructs.items() if not pattern.search(source))
+    assert not missing, (
+        f"{FIXTURE.name} no longer exercises: {', '.join(missing)}. The views gate would pass a "
+        "renderer that broke them. Add content that uses them rather than deleting this check."
+    )

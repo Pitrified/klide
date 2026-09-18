@@ -12,6 +12,6 @@ and anything meant to be lifted out and used on another project.
 | skills the harness loads | `.claude/skills/` |
 | the repo's instructions | `.github/copilot-instructions.md`, imported by `CLAUDE.md` |
 | why those skills and not others | [`adoption.md`](adoption.md) |
-| experiment diary | `diary/`, once meta phase 4 defines the entry shape |
+| experiment diary | [`diary/`](diary/), with the entry shape in its README |
 
 Plans for this track are in [`../plans/03_meta/`](../plans/03_meta/).
