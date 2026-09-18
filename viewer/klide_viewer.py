@@ -876,10 +876,20 @@ def main(argv: list[str] | None = None) -> int:
     log(f"connected to {args.host}:{args.port}")
 
     bridge = Bridge(sock, args.width, args.height)
-    server = ThreadingHTTPServer(
-        (args.bind, args.http_port),
-        handler_for(bridge, page_for(args.width, args.height, args.ppi)),
-    )
+    try:
+        server = ThreadingHTTPServer(
+            (args.bind, args.http_port),
+            handler_for(bridge, page_for(args.width, args.height, args.ppi)),
+        )
+    except OSError as taken:
+        # Almost always a viewer somebody forgot to stop. The traceback this used to raise named
+        # the socket call rather than the situation, which is the wrong end of the problem.
+        log(f"cannot serve on {args.bind}:{args.http_port}: {taken}")
+        log("another viewer is probably still running. Find it with:")
+        log("  pgrep -af klide_viewer")
+        log(f"then stop it, or start this one on --http-port {args.http_port + 1}")
+        sock.close()
+        return 1
     log(f"open http://{args.bind}:{args.http_port}/")
     if args.bind == "127.0.0.1":
         log(f"from another machine, ssh -L {args.http_port}:localhost:{args.http_port} here")
