@@ -92,8 +92,12 @@ class InputReader(threading.Thread):
         try:
             while True:
                 self.inbox.put(self.link.read_input())
-        except (ProtocolError, ConnectionError, OSError):
-            self.inbox.put(None)  # the viewer closed
+        except (ProtocolError, ConnectionError, OSError) as ended:
+            # Say which. A viewer closing, a socket timing out and a malformed message all end the
+            # session here and used to end it identically, so a host that stopped on its own was
+            # indistinguishable from one whose viewer had gone.
+            print(f"serve: input stream ended: {type(ended).__name__}: {ended}", file=sys.stderr)
+            self.inbox.put(None)
 
 
 def apply_event(event: InputEvent, state: LiveState) -> bool:
