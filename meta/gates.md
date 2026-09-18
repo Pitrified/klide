@@ -17,6 +17,26 @@ Anything claiming to be a gate has to meet all five.
 No dependency beyond bash, python3 and git. There is no node on this box, which rules out the usual
 markdown and spelling tools; that constraint kept the gates small, which is not a loss.
 
+## What is deliberately not a gate
+
+[`scripts/drive.py`](../scripts/drive.py) opens the viewer's page in Chromium or Firefox and
+operates it: clicks, key presses, taps and drags, screenshots, reading the DOM. It is an instrument
+for development, started by hand. `scripts/check.sh` does not run it and neither does CI.
+
+Three reasons, in the order they matter. It needs a browser downloaded before anyone could commit,
+which fails the fourth rule for everybody who has not done that. What it checks is whether a person
+can use the thing, and that has no reference to compare against. And a browser in the commit path
+is a large moving part in the place where the gates are meant to be boring.
+
+The version that could be a gate is designed and recorded rather than re-derived, as V5 in
+[the viewer phase](../plans/04_klide_app/05_viewer.md): drive a fixed transcript through a scripted
+sequence, read the canvas back with `toDataURL`, and assert it equals the frame klide sent, exactly,
+at 4-bit depth. That needs no reference file, because klide's own output is the reference. It is the
+same convergence property the streaming tests already hold the simulator to.
+
+What no version of it could catch is a design that was wrong when it was written, which is the whole
+of AD9 and the reason the viewer exists at all.
+
 ## What runs now
 
 | gate | what it catches | demonstrated by |

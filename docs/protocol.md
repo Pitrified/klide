@@ -99,6 +99,16 @@ id. The last one is the next likely addition: the device can already tell that a
 evicted from its cache, but it has no message for saying so, so the host would have to be told by a
 gesture instead. Nothing has needed it yet.
 
+Compression is no longer merely absent, it is a question with a number on it. The viewer sent
+frames to its browser as raw pixels until someone reached it through an SSH tunnel and waited four
+to five seconds a press; a panel of rendered text compresses about two orders of magnitude, and the
+same screen went from 2765 KB to 24 KB. That was a viewer-internal transport and changed nothing
+here, but a full frame on this wire is about a megabyte of packed 4bpp, over Wi-Fi, to a device
+with 512 MB of RAM. Whether the frame body should be deflated is D1 in
+[the device phase](../plans/04_klide_app/06_device_client.md), and it turns on what KOReader's Lua
+can decompress, which is a fact about that firmware rather than something to reason out from here.
+A protocol change the client cannot decode is worse than a slow protocol.
+
 The magic carries a version, so a client that meets a protocol it does not know refuses it rather
 than misreading it.
 

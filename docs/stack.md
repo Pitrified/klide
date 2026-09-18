@@ -7,6 +7,11 @@ list below, which AD1 asks for instead of a race between prototypes.
 Scope: the host, the renderer and the simulator. The device client is a separate question,
 still open as Q3, and it is Lua or C either way because that is what runs on the device.
 
+The viewer that came later is in scope too and reached the same answer independently, for a
+different reason. It ships as one file to whatever machine has a screen, so its budget is the
+standard library and nothing else: it writes its own PNGs out of `zlib` and `struct` rather than
+importing an imaging library. See [its README](../viewer/README.md).
+
 ## What has to be true
 
 Properties the stack has to hold at fifteen features, not at the first one.
@@ -53,6 +58,10 @@ cycle per attempt costs it on every attempt.
 **R8. It is already on this box, or cheap to put there.**
 Checked 2026-09-16: python3 3.14.4 and uv are installed, with Pillow and pygments already
 importable. Dart 3.12.2 is installed. rustc, cargo, go, node and npm are absent.
+Still true on 2026-09-18, and worth saying because a browser arrived in between: `playwright` is a
+dev dependency and its Chromium and Firefox live in `~/.cache/ms-playwright`, which is a Python
+package and two binaries rather than a node toolchain. R6 is unaffected; the gates still need only
+bash, python3 and git, and the browser drives [an instrument that is not a gate](../meta/gates.md).
 
 ## The one thing measured rather than argued
 

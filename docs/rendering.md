@@ -17,6 +17,33 @@ nothing and renders nothing. That is why `tests/test_views.py` can ask whether a
 heading without drawing anything, and why the `views` gate can check what the page looks like
 without knowing what it means.
 
+## The reading view
+
+A screen holds as many turns as fit, and no fixed number of them.
+
+It used to hold six. A count cannot know how tall a turn is, so six short shell calls left the
+bottom two thirds of the panel blank, which is what the first person to sit with the viewer said
+about it. The fill lays out more turns than will fit, keeps the last screenful of lines, and pads
+above them, so the newest line sits on the bottom margin and older ones move up as it arrives. The
+oldest turn on screen is clipped at the top rather than dropped, the way a terminal clips.
+
+Laying out the whole candidate set at once, rather than measuring turns one at a time, is what
+keeps the speaker labels right: whether a turn is labelled depends on the turn before it. The
+candidate set doubles until it overflows, so the work is proportional to what ends up on screen
+rather than to the length of the session.
+
+A page turn moves by however many turns were showing, which is what makes a press a screenful
+whatever a screenful happens to be that time.
+
+This costs nothing extra on the panel, which is worth stating because it sounds as though it
+should. Shifting every line up on each new turn means the whole text area changes, and a
+full-screen redraw is the expensive kind. But the view already slid when the six-turn window did:
+measured patches were 1264x1041 to 1264x1517 before the change and 1264x1512 after, against a 1680
+tall screen.
+
+What a reader who has paged back sees next is still open. Live mode was the target, and scrolling
+is a separate question.
+
 ## Type
 
 Sizes are typographic points converted through `Panel.ppi` (AD8), never pixels.
