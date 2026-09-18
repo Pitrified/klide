@@ -8,12 +8,14 @@ screen sits, what a press moves, and that a real client on a real socket receive
 import json
 import socket
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from klide.frame import Frame
 from klide.host import serve
 from klide.input import Button, Direction, InputEvent
-from klide.panel import KOBO_LIBRA_2
+from klide.panel import KOBO_LIBRA_2, Panel
 from klide.protocol import encode_input, read_frame
 from klide.render import Metrics
 from klide.serve import LiveState, apply_event, fill, render, title_for
@@ -244,3 +246,41 @@ def test_a_press_is_answered_without_waiting_for_the_coalescer() -> None:
     # immediate rather than by timing anything.
     state = LiveState(turns=turns(20))
     assert apply_event(InputEvent.press(Button.PAGE_BACK), state) is True
+
+
+#: A panel small enough that a frame is a couple of bytes, for tests about the link rather than
+#: about what is drawn on it.
+TINY = Panel(name="tiny", width=2, height=1, grey_levels=16, ppi=300)
+
+
+def test_a_quiet_reader_is_not_mistaken_for_a_departed_one() -> None:
+    """A session must not end because nobody pressed anything.
+
+    `--wait` is how long to wait for a viewer to connect. It was also being used as the read
+    timeout on the connection once there was one, so a host told to wait two hours also stopped two
+    hours after the last press. Measured before it was understood: a host started at 09:55:28 died
+    at 11:55:39, which is 7200 seconds to the second.
+
+    A short `timeout` with no `read_timeout` is the shape that would have caught it: the accept
+    budget is nearly spent and the connection still must not time out.
+    """
+    port = _free_port()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        connecting = pool.submit(_connect_after, port, 0.2)
+        with serve(("127.0.0.1", port), timeout=1.0) as link:
+            client = connecting.result(timeout=5)
+            try:
+                assert link._conn.gettimeout() is None, (
+                    "the connection must not inherit the accept budget, or a reader who presses "
+                    "nothing for that long ends the session"
+                )
+                time.sleep(1.5)  # longer than the accept timeout, saying nothing at all
+                link.send_frame(Frame(TINY, 0, 0, 2, 1, bytes([0, 15])))
+                assert client.recv(64), "the link is still usable after being idle"
+            finally:
+                client.close()
+
+
+def _connect_after(port: int, delay: float) -> socket.socket:
+    time.sleep(delay)
+    return socket.create_connection(("127.0.0.1", port), timeout=5)

@@ -72,17 +72,29 @@ def _listener(address: Address) -> socket.socket:
 
 
 @contextmanager
-def serve(address: Address, timeout: float = 10.0) -> Iterator[HostLink]:
+def serve(
+    address: Address, timeout: float = 10.0, read_timeout: float | None = None
+) -> Iterator[HostLink]:
     """Bind, accept one device, and hold the connection open for the block.
 
     One device at a time. Several conversations are several pages to the same screen, not several
     screens, so nothing yet needs a second client.
+
+    The two timeouts are separate because they answer different questions, and conflating them was
+    a real bug. `timeout` is how long to wait for a device to connect. `read_timeout` is how long a
+    read on the connection may block, and for a live session the answer is forever: a person can
+    look at a page for an hour without pressing anything, and that is not a fault. When both were
+    one number, a host told to wait two hours for a viewer also stopped two hours after the last
+    press, which was measured rather than guessed: it died at 7200.5 seconds.
+
+    A dead connection is still noticed, by the host's own writes failing, which is the direction
+    that carries traffic anyway.
     """
     with closing(_listener(address)) as server:
         server.listen(1)
         server.settimeout(timeout)
         conn, _ = server.accept()
-        conn.settimeout(timeout)
+        conn.settimeout(read_timeout)
         link = HostLink(conn)
         try:
             yield link
@@ -98,7 +110,7 @@ def serve_once(frame: Frame, socket_path: Address, timeout: float = 10.0) -> Non
     Kept because the walking skeleton is the frame gate and there is no reason for that check to
     grow a session.
     """
-    with serve(socket_path, timeout) as link:
+    with serve(socket_path, timeout, read_timeout=timeout) as link:
         link.send_frame(frame)
 
 
@@ -106,5 +118,5 @@ def serve_script(
     socket_path: Address, script: Callable[[HostLink], None], timeout: float = 10.0
 ) -> None:
     """Run `script` against one connected device. The scripted session's host side."""
-    with serve(socket_path, timeout) as link:
+    with serve(socket_path, timeout, read_timeout=timeout) as link:
         script(link)

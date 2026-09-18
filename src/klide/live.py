@@ -160,6 +160,8 @@ def _serve(path: Path, panel: Panel, metrics: Metrics, args: argparse.Namespace)
     print(f"live:   uv run viewer/klide_viewer.py --port {args.port}")
     print("live: then open the URL it prints, forwarding that port if you are elsewhere")
     try:
+        # No read timeout: --wait is how long to wait for a viewer, not how long a session may
+        # last. A reader who presses nothing for an hour has not gone away.
         with serve((args.bind, args.port), timeout=args.wait) as link:
             print("live: viewer connected")
             state = serve_live(link, path, panel, metrics, cap=args.turns, seconds=args.seconds)
