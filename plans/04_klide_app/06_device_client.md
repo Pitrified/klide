@@ -26,6 +26,9 @@ Context: [`00_start.md`](00_start.md), device notes in [`../02_kobo/`](../02_kob
 ## Out of scope
 
 - Rooting or installing anything, which is the `02_kobo` track.
+- How the device reaches the host and proves it may, which is
+  [`../06_transport_and_access/00_start.md`](../06_transport_and_access/00_start.md). This phase
+  assumes a connection exists.
 - Any change that is not reversible on a device that goes back.
 
 ## Done when

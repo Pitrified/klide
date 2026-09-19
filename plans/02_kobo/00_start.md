@@ -95,6 +95,10 @@ See KD1 below, which settles how much the device is asked to do.
 
 - Q3, on-device client shape. The reversibility constraint pushes it to the KOReader plugin: a plugin is files under `.adds/koreader/plugins/`, removed by deleting them, and it inherits touch input. A cross-compiled FBInk binary is more to install and more to leave behind, and it needs a different koxtoolchain target than the Kindle work assumed.
 - Q4, transport. Wifi is available immediately, so plain LAN or an SSH tunnel through KOReader may be enough for the spike and Tailscale becomes one more thing to install and remove.
+  Moved 2026-09-19 to [`../06_transport_and_access/00_start.md`](../06_transport_and_access/00_start.md),
+  which splits it into reachability and authorization. Q4 only ever asked the first half, and the
+  second half has no answer at all today: `KLD2` carries no credential, so the first bind past
+  loopback exposes the transcript to whatever is on the network.
 - D1 stops being an assumption. Two devices make the host-renders-frames split testable instead of asserted.
 
 ## Back on the table
