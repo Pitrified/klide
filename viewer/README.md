@@ -69,6 +69,19 @@ is executable, without naming a Python at all.
 To check whether a host allows forwarding at all, without root on it, see the probe in
 [the phase plan](../plans/04_klide_app/05_viewer.md).
 
+## Two views
+
+The page opens with everything on it: the scale buttons, true size, the monitor ppi box, the honest
+refresh switch, the ruler and the status line. That is the view for working on klide.
+
+The `reading` button swaps to the other one: the panel, the two page buttons, and the button back.
+The panel takes whatever room the window has, keeping its shape, so it is as large as the window
+allows. Nothing else changes; taps, swipes and the arrow keys work the same in both. This is the
+view for a phone on the tailnet, or a second monitor, where the panel is being read rather than
+measured.
+
+The scale it returns to is the one that was chosen before, not a default.
+
 ## Driving it from a script
 
 [`../scripts/drive.py`](../scripts/drive.py) opens the page in a real browser and operates it, so

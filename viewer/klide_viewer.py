@@ -376,22 +376,35 @@ PAGE = """<!doctype html>
   #status { padding: 6px 12px; background: #1d1d1d; color: #9a9a9a; white-space: pre-wrap; }
   #ruler { height: 10px; background: #6a6a2a; margin-top: 4px; }
   aside { max-width: 20em; color: #9a9a9a; }
+  .controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  /* Reading mode. What is left is the panel, the two page buttons and the way back; everything
+     that exists to diagnose the viewer rather than to read what is on the panel goes away, and the
+     panel takes whatever room the window has. Meant for a phone or a second monitor, where the
+     page is being looked at rather than worked on. */
+  body.reading { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+  body.reading .diagnostic { display: none; }
+  body.reading #wrap { flex: 1; min-height: 0; padding: 0;
+                       justify-content: center; align-items: center; }
+  body.reading #panel { box-shadow: 0 0 0 1px #000; }
 </style>
 <header>
   <button id="back">&#9664; page</button>
   <button id="forward">page &#9654;</button>
-  <span>scale</span>
-  <button data-scale="1">1:1</button>
-  <button data-scale="2">1:2</button>
-  <button data-scale="3">1:3</button>
-  <button data-scale="4">1:4</button>
-  <button id="true-size">true size</button>
-  <span>monitor ppi <input type="number" id="ppi" min="30" max="1200" step="1"></span>
-  <button id="honest">honest refresh</button>
+  <button id="mode">reading</button>
+  <span class="controls diagnostic">
+    <span>scale</span>
+    <button data-scale="1">1:1</button>
+    <button data-scale="2">1:2</button>
+    <button data-scale="3">1:3</button>
+    <button data-scale="4">1:4</button>
+    <button id="true-size">true size</button>
+    <span>monitor ppi <input type="number" id="ppi" min="30" max="1200" step="1"></span>
+    <button id="honest">honest refresh</button>
+  </span>
 </header>
 <div id="wrap">
   <canvas id="panel"></canvas>
-  <aside>
+  <aside class="diagnostic">
     <p>The two buttons at the top left are the device's physical page-turn buttons; the left and
     right arrow keys do the same. Click the panel for a tap, drag and release for a swipe. Space
     toggles honest refresh.</p>
@@ -404,7 +417,7 @@ PAGE = """<!doctype html>
     <div id="ruler"></div>
   </aside>
 </div>
-<div id="status">connecting</div>
+<div id="status" class="diagnostic">connecting</div>
 <script>
 const CONFIG = __CONFIG__;
 
@@ -460,6 +473,11 @@ const ctx = canvas.getContext("2d");
 
 let scale = 3;
 let trueSize = false;
+// Reading mode hides the instruments and fits the panel to the window; `fit` is what keeps it
+// fitted when the window changes, which is most of the time on a phone that gets turned.
+let reading = false;
+let fit = false;
+let beforeReading = {scale: scale, trueSize: trueSize};
 // On by default. A redraw then takes the hundreds of milliseconds a real panel claims, which is
 // what makes a design that redraws too often feel as bad here as it would on the device. The
 // switch is there because clicking between views to check a layout wants the fast version (V2).
@@ -590,6 +608,7 @@ function setRuler() {
 for (const button of document.querySelectorAll("button[data-scale]")) {
   button.onclick = () => {
     trueSize = false;
+    fit = false;
     scale = Number(button.dataset.scale);
     say(`scale 1:${scale}`);
     resize();
@@ -607,6 +626,7 @@ function fitTrueSize() {
   // an e-ink panel at 300 ppi. Nothing on a 110 ppi monitor can show 300 ppi detail; what this does
   // show honestly is size.
   trueSize = true;
+  fit = false;
   scale = CONFIG.ppi / monitorPpi * devicePixelRatio;
   say(`true size at an assumed ${monitorPpi} ppi is 1:${scale.toFixed(2)}`);
   resize();
@@ -619,6 +639,49 @@ document.getElementById("ppi").oninput = (event) => {
   if (trueSize) fitTrueSize();  // the number is what true size means, so re-fit rather than drift
   showStatus();
 };
+function fitToWindow() {
+  // One scale for both axes, so the panel keeps its shape. The larger of the two ratios is the
+  // one that fits: it shrinks to whichever dimension runs out first, and the other has room left
+  // over, which is where the centring in the CSS puts the slack.
+  fit = true;
+  trueSize = false;
+  // Floored, and measured with the fractional rect rather than the rounded `clientHeight`: the
+  // header is not a whole number of pixels tall, so the room under it is not either, and
+  // `present()` rounds the canvas to whole device pixels. Rounding both up puts a fraction of a
+  // pixel of panel under the bottom edge of the window.
+  const room = document.getElementById("wrap").getBoundingClientRect();
+  const wide = Math.max(1, Math.floor(room.width));
+  const tall = Math.max(1, Math.floor(room.height));
+  scale = Math.max(CONFIG.width / wide, CONFIG.height / tall);
+  say(`fitted to ${wide}x${tall} css px at 1:${scale.toFixed(2)}`);
+  resize();
+}
+
+const modeButton = document.getElementById("mode");
+function toggleReading() {
+  reading = !reading;
+  document.body.classList.toggle("reading", reading);
+  modeButton.textContent = reading ? "diagnostics" : "reading";
+  if (reading) {
+    beforeReading = {scale: scale, trueSize: trueSize};
+    say("reading mode");
+    fitToWindow();
+    return;
+  }
+  // Back to whatever was being looked at before, rather than to a default: the scale was chosen
+  // for a reason and reading mode is a detour from it.
+  fit = false;
+  scale = beforeReading.scale;
+  trueSize = beforeReading.trueSize;
+  say(`diagnostics, back to 1:${scale.toFixed(2)}`);
+  resize();
+}
+modeButton.onclick = toggleReading;
+
+// A phone turned sideways, a window dragged wider, a desktop zoom: all of them change how much
+// room there is, and a fit that only happened once would be wrong from then on.
+addEventListener("resize", () => { if (fit) fitToWindow(); else resize(); });
+
 const honestButton = document.getElementById("honest");
 function toggleHonest() {
   honest = !honest;
