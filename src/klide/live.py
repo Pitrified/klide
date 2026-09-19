@@ -25,8 +25,9 @@ from klide.device import Device
 from klide.frame import Frame
 from klide.host import DEFAULT_PORT, serve
 from klide.panel import KOBO_LIBRA_2, Panel
+from klide.reader import from_this_host
 from klide.render import Metrics
-from klide.serve import LiveState, render
+from klide.serve import LiveState, render, run_source
 from klide.serve import run as serve_live
 from klide.stream import Coalescer, dirty_rectangle, pick_waveform
 from klide.transcript import Turn, read, tail
@@ -96,6 +97,11 @@ def main(argv: list[str] | None = None) -> int:
         help="serve a viewer over TCP instead of writing frames to disk",
     )
     parser.add_argument(
+        "--pages",
+        action="store_true",
+        help="with --serve, start on the session list and let the reader walk all four pages",
+    )
+    parser.add_argument(
         "--bind",
         default="127.0.0.1",
         # Loopback, because the viewer normally runs on this machine and anything that
@@ -161,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _serve(path: Path, panel: Panel, metrics: Metrics, args: argparse.Namespace) -> int:
-    """Wait for a viewer and stream the session to it."""
+    """Wait for a viewer and stream to it: one conversation, or all four pages with --pages."""
     where = f"{args.bind}:{args.port}"
     print(f"live: waiting for a viewer on {where} (up to {args.wait:.0f}s)")
     print("live: in another terminal on this machine, run")
@@ -172,6 +178,12 @@ def _serve(path: Path, panel: Panel, metrics: Metrics, args: argparse.Namespace)
         # last. A reader who presses nothing for an hour has not gone away.
         with serve((args.bind, args.port), timeout=args.wait) as link:
             print("live: viewer connected")
+            if args.pages:
+                reader = from_this_host(metrics)
+                print(f"live: {len(reader.listed)} sessions on the list")
+                run_source(link, reader, panel, metrics, seconds=args.seconds)
+                print(f"live: viewer gone, last on {reader.path}")
+                return 0
             state = serve_live(link, path, panel, metrics, cap=args.turns, seconds=args.seconds)
     except TimeoutError:
         print(f"live: no viewer connected within {args.wait:.0f}s", file=sys.stderr)

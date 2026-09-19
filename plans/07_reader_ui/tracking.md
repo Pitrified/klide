@@ -30,7 +30,7 @@ The gesture map this supersedes is in [`../02_kobo/01_ui_ux.md`](../02_kobo/01_u
 | #  | Phase                 | Plan                                              | Status |
 | -- | --------------------- | ------------------------------------------------- | ------ |
 | 1  | Extractor and model   | [`01_extractor.md`](01_extractor.md)              | done |
-| 2  | Navigation            | [`02_navigation.md`](02_navigation.md)            | planned |
+| 2  | Navigation            | [`02_navigation.md`](02_navigation.md)            | done |
 | 3  | The four pages        | [`03_four_pages.md`](03_four_pages.md)            | done |
 | 4  | Live and stale        | [`04_live_and_dirty.md`](04_live_and_dirty.md)    | planned |
 
@@ -93,3 +93,13 @@ Append-only. Newest at the bottom.
   the specification over the phase plan's step 2. Two new references cover states rather than
   pages: the empty changeset, which is what this repo shows most of the time, carrying the stale
   marker so the refresh control is in a reference too. Both shown failing before being counted
+- 2026-09-19 : phase 2 done, and U7 with it. The serve loop grew a three-method `Source` protocol,
+  which is exactly the three page specific points the assessment named, and `run_source` is now
+  the loop for both the single-conversation host and the new `Reader`. The stack lives in the
+  reader, above the loop and below the pages. The whole four-page walk was driven in a browser
+  against live sessions on this box, including a tap that opened the patch of the file being
+  edited at that moment, and three taps back up. One claim in the phase plan came out false when
+  measured: a page change is not always a full refresh, because two pages sharing a recap produce
+  a patch that starts below it, 74% of the panel and so just under the waveform threshold. Left as
+  it is, recorded, and phase 4 owns refresh behaviour. The gesture map in `02_kobo/01_ui_ux.md`
+  now carries what the reader actually does

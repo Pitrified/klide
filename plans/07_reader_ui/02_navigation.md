@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 ---
 
 # Phase 2 - the stack, the tap and the back control
@@ -56,3 +56,40 @@ events this needs.
   is the thing the harness exists for.
 
 ## What the implementation found
+
+Implemented 2026-09-19, after phase 3.
+
+**U7 settled where the assessment said, and the loop was split rather than copied.**
+[`src/klide/serve.py`](../../src/klide/serve.py) grew a `Source` protocol of exactly three
+methods, `poll`, `handle` and `frame`, which are the three page specific points the assessment
+named; `run_source` is the loop and knows nothing about pages. `Conversation` is the old
+single-transcript host as a source, so `klide-live --serve` and the browser harness still start
+what they always started. `Reader` in [`../../src/klide/reader.py`](../../src/klide/reader.py) is
+the other source, and the stack lives in it: above the loop, below the pages.
+
+**A tap is a row lookup, not a hit test.** `Reader.row_at` turns y into a screen row, the screen's
+`Rendered.rows` turns that into a column line, and the page's targets say what is on it. The
+mapping exists because the conversation fills from the bottom, so screen row and column line are
+not the same number; filler rows carry -1 and open nothing.
+
+**Only the recap is tappable on page 2.** Everything below it is conversation, which has nothing
+to open, so `ConversationScreen` marks every row past the recap as filler rather than searching
+targets that cannot be there.
+
+**The measurement in this phase's "done when" came out false, and is worth keeping.** A page
+change is not always a full refresh. Walking from page 2 to page 3 sent a patch of 1264x1247, 74%
+of the panel, which is just under `pick_waveform`'s three-quarter threshold, so it went as GL16
+rather than GC16. The reason is that the two pages share a recap, so the dirty rectangle starts
+below it. Whether a navigation step should force a flash regardless is a ghosting question that
+needs the device; it is left as it is, and phase 4 owns the refresh behaviour.
+
+**The whole walk was driven in a browser against live data**, not against fixtures:
+`scripts/drive.py --pages` starts the host on the session list. Tapping a row opened that session
+with its real transcript, tapping the totals opened the tree of this repo's own uncommitted work,
+tapping `serve.py` showed the patch of the file being edited at that moment, and three taps on the
+back control walked the stack back to the list. The log names every step, and every refused press
+says why.
+
+**Page 4 stopped drawing the patch header.** `diff --git`, `index`, `---` and `+++` name the file
+four more times under a page already titled with the path, which is a fifth of a twenty-line
+screen. Found by looking at the real thing, which is what the harness is for.

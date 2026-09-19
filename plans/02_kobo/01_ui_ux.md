@@ -63,6 +63,17 @@ cannot be true about where a reader is. What holds there instead is UD2 to UD4: 
 down, a control in the top right to come up, and the physical buttons scrolling the current page on
 every page. The rest of the map, pinch and long hold, is untouched.
 
+What the reader does as built, on 2026-09-19, is the map above with the carousel taken out:
+
+- page-turn buttons: scroll the current page, on all four pages
+- swipe up and left: the same as page forward. Swipe down and right: the same as page back
+- tap a row: open it, which pushes a page onto the stack
+- tap the control in the top right: come back up, and on the session list say there is nowhere to go
+- tap anywhere with nothing under it: nothing, and a line in the host's log saying so
+
+Tap left and right thirds is gone with the cursor it moved (UD3). Long hold and pinch are still
+only in the map.
+
 ## Streaming or polling
 
 Push, from a connection the device opens outward to the host. That works the same over Tailscale, LAN or USB networking,

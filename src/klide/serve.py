@@ -24,7 +24,9 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Protocol
 
+from klide.ahp import SessionState
 from klide.frame import Frame
 from klide.host import HostLink
 from klide.input import Button, Direction, EventKind, InputEvent
@@ -163,7 +165,7 @@ def title_for(state: LiveState) -> str:
     return "live" if state.following else f"history, {state.offset} back"
 
 
-def fill(state: LiveState, metrics: Metrics) -> list[Line]:
+def fill(state: LiveState, metrics: Metrics, session: SessionState | None = None) -> list[Line]:
     """The screen: a header at the top, and as many turns as fit sitting on the bottom margin.
 
     More turns are laid out than will fit and the last screenful of lines is kept, rather than
@@ -176,7 +178,7 @@ def fill(state: LiveState, metrics: Metrics) -> list[Line]:
     """
     subtitle = f"{len(state.turns)} turns"
     title = title_for(state)
-    head = len(conversation([], metrics, title=title, subtitle=subtitle).lines)
+    head = len(conversation([], metrics, title=title, subtitle=subtitle, state=session).lines)
     available = max(0, metrics.lines_per_screen - head)
 
     end = len(state.turns) - state.offset
@@ -185,7 +187,7 @@ def fill(state: LiveState, metrics: Metrics) -> list[Line]:
     starts: list[int] = []
     while True:
         start = max(0, end - min(take, state.cap or take))
-        column, starts = lay_conversation(state.turns[start:end], metrics, title, subtitle)
+        column, starts = lay_conversation(state.turns[start:end], metrics, title, subtitle, session)
         body = column.lines[head:]
         reached_all = start == 0 or (state.cap is not None and take >= state.cap)
         if len(body) >= available or reached_all:
@@ -209,6 +211,54 @@ def render(state: LiveState, panel: Panel, metrics: Metrics) -> Frame:
     return render_lines(fill(state, metrics), panel, metrics)
 
 
+class Source(Protocol):
+    """What the loop needs from whatever is on screen.
+
+    Three methods, because exactly three things in the loop are page specific: what is polled for
+    new content, what a press means, and what gets drawn. Everything else the loop does - draining
+    the input queue, coalescing a burst, sending only what changed, telling three kinds of ending
+    apart - is the same whichever page is up. That is U7's answer, and it is why the reader's page
+    stack is a source rather than a second loop.
+    """
+
+    def poll(self) -> bool:
+        """Whether new content arrived that is worth a redraw."""
+
+    def handle(self, event: InputEvent) -> tuple[bool, str]:
+        """Whether the screen needs redrawing, and what to say about it either way."""
+
+    def frame(self, panel: Panel, metrics: Metrics) -> Frame:
+        """The page as it stands."""
+
+
+@dataclass
+class Conversation:
+    """One transcript and nothing else: the host as it was before there were four pages.
+
+    Kept because it is what `klide-live --serve` has always started, what the browser harness
+    drives, and the smallest thing that can be pointed at a session.
+    """
+
+    state: LiveState
+    follower: Follower
+
+    def poll(self) -> bool:
+        new = self.follower.poll()
+        if not new:
+            return False
+        self.state.turns.extend(new)
+        # Turns are taken either way, so paging back to the tail shows everything that arrived
+        # meanwhile; only following makes them worth a refresh now.
+        return self.state.following
+
+    def handle(self, event: InputEvent) -> tuple[bool, str]:
+        moved = apply_event(event, self.state)
+        return moved, explain(moved, self.state)
+
+    def frame(self, panel: Panel, metrics: Metrics) -> Frame:
+        return render(self.state, panel, metrics)
+
+
 def run(
     link: HostLink,
     transcript: Path,
@@ -218,9 +268,22 @@ def run(
     seconds: float | None = None,
     tick: float = 0.05,
 ) -> LiveState:
-    """Serve one viewer until it disconnects, or until `seconds` runs out."""
+    """Serve one viewer a single conversation, until it disconnects or `seconds` runs out."""
     state = LiveState(cap=cap)
-    follower = Follower(transcript)
+    source = Conversation(state, Follower(transcript))
+    run_source(link, source, panel, metrics, seconds=seconds, tick=tick)
+    return state
+
+
+def run_source(
+    link: HostLink,
+    source: Source,
+    panel: Panel,
+    metrics: Metrics,
+    seconds: float | None = None,
+    tick: float = 0.05,
+) -> None:
+    """The loop. Whatever is on screen is the source's business, not this function's."""
     coalescer = Coalescer()
     inbox: queue.Queue[InputEvent | None] = queue.Queue()
     InputReader(link, inbox).start()
@@ -237,7 +300,7 @@ def run(
         it felt.
         """
         nonlocal previous
-        page = render(state, panel, metrics)
+        page = source.frame(panel, metrics)
         patch = page if previous is None else dirty_rectangle(previous, page)
         previous = page
         if patch is None:
@@ -252,30 +315,23 @@ def run(
         return True
 
     if not push():  # something on screen before anything happens
-        return state
+        return
 
     while True:
         if deadline is not None and time.monotonic() >= deadline:
-            return state
+            return
 
-        new = follower.poll()
-        if new:
-            state.turns.extend(new)
-            if state.following:
-                coalescer.changed()
+        if source.poll():
+            coalescer.changed()
 
         redraw = False
         try:
             while True:
                 event = inbox.get_nowait()
                 if event is None:
-                    return state
-                moved = apply_event(event, state)
-                print(
-                    f"serve: {describe(event)} -> {explain(moved, state)}",
-                    file=sys.stderr,
-                    flush=True,
-                )
+                    return
+                moved, note = source.handle(event)
+                print(f"serve: {describe(event)} -> {note}", file=sys.stderr, flush=True)
                 redraw = moved or redraw
         except queue.Empty:
             pass
@@ -283,7 +339,7 @@ def run(
         # A press is answered at once; new content waits until it has settled.
         if redraw or coalescer.due():
             if not push():
-                return state
+                return
             coalescer.sent()
 
         time.sleep(tick)

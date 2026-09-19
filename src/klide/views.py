@@ -441,9 +441,26 @@ def one_diff(
         column.add(STALE, metrics.bold(INK))
         targets.append(Target(Action.REFRESH, line=len(column.lines) - 1))
     column.lines.append(rule(metrics))
-    column.blank(metrics.body())
-    lay_diff(text, column, metrics)
+    # No blank after the rule: the diff layer already puts one before each hunk header, and two
+    # blank lines at the top of a twenty-line screen is a tenth of the page saying nothing.
+    lay_diff(_body(text), column, metrics)
     return Page(column, tuple(targets))
+
+
+def _body(patch: str) -> str:
+    """A patch without the file header `git` puts on it.
+
+    `diff --git`, `index`, `---` and `+++` name the file four more times, and the page is already
+    titled with the path. On a screen that holds about twenty lines of monospace, that is a fifth
+    of it spent saying what the reader just tapped.
+    """
+    lines = patch.split("\n")
+    start = 0
+    for index, line in enumerate(lines):
+        if line.startswith("@@"):
+            start = index
+            break
+    return "\n".join(lines[start:])
 
 
 def one_file(path: str, text: str, metrics: Metrics, language: str = "") -> Page:

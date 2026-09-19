@@ -344,6 +344,14 @@ def test_page_four_is_the_path_alone_not_the_whole_recap() -> None:
     assert CURRENT.project + "@" not in " ".join(texts(page.column)[:2])
 
 
+def test_the_patch_header_is_not_drawn_twice() -> None:
+    # The page is titled with the path; `diff --git`, `index`, `---` and `+++` name it four more
+    # times, which is a fifth of a twenty-line screen.
+    lines = page_texts(View.DIFF)
+    assert not any(line.startswith(("diff --git", "index ", "--- ", "+++ ")) for line in lines)
+    assert any(line.startswith("@@") for line in lines)
+
+
 def test_the_unrouted_file_view_has_no_targets() -> None:
     # U5: it stays in place with nothing routing to it, rather than being deleted.
     assert build()[View.FILE].targets == ()

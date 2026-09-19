@@ -186,6 +186,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--http-port", type=int, default=8100, help="the viewer's port")
     parser.add_argument("--transcript", help="a .jsonl for the host to render")
     parser.add_argument(
+        "--pages",
+        action="store_true",
+        help="start the host on the session list, so the whole four-page walk can be driven",
+    )
+    parser.add_argument(
         "--turns",
         type=int,
         default=None,
@@ -208,6 +213,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     host = ["uv", "run", "klide-live", "--serve", "--port", str(args.port)]
+    if args.pages:
+        host += ["--pages"]
     if args.turns is not None:
         host += ["--turns", str(args.turns)]
     if args.transcript:
