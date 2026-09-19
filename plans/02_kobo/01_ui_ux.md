@@ -56,6 +56,13 @@ Provisional gesture map, given klide is read-only toward Claude (D11):
 - tap centre: open or close the item under the cursor
 - long hold: force a full refresh, which doubles as the ghosting escape hatch
 
+Superseded for the reader UI on 2026-09-19, and left above rather than edited away.
+The map is a carousel of peer views; the four pages specified in
+[`../07_reader_ui/00_start.md`](../07_reader_ui/00_start.md) are a stack with a return path, and both
+cannot be true about where a reader is. What holds there instead is UD2 to UD4: tap the row to go
+down, a control in the top right to come up, and the physical buttons scrolling the current page on
+every page. The rest of the map, pinch and long hold, is untouched.
+
 ## Streaming or polling
 
 Push, from a connection the device opens outward to the host. That works the same over Tailscale, LAN or USB networking,
