@@ -32,13 +32,13 @@ The gesture map this supersedes is in [`../02_kobo/01_ui_ux.md`](../02_kobo/01_u
 | 1  | Extractor and model   | [`01_extractor.md`](01_extractor.md)              | done |
 | 2  | Navigation            | [`02_navigation.md`](02_navigation.md)            | done |
 | 3  | The four pages        | [`03_four_pages.md`](03_four_pages.md)            | done |
-| 4  | Live and stale        | [`04_live_and_dirty.md`](04_live_and_dirty.md)    | planned |
+| 4  | Live and stale        | [`04_live_and_dirty.md`](04_live_and_dirty.md)    | done |
 
 Status values: draft / planned / in progress / done / superseded / discarded.
 
-All four are planned since the U batch was answered. Phase 1 still goes first: it needs nothing that
-does not exist, and its measurement of what `claude agents --json` costs is what settles U4's
-cadence. Phase 2 opens with the split U7 asked about, which is assessed but not decided.
+All four are done, taken in the order 1, 3, 2, 4: the pages were built before the navigation,
+because navigation has nothing to move between until the pages exist. What the folder does not yet
+cover is anything on the device itself, which is folder 06's and blocked on the hardware.
 
 ## Log
 
@@ -103,3 +103,12 @@ Append-only. Newest at the bottom.
   a patch that starts below it, 74% of the panel and so just under the waveform threshold. Left as
   it is, recorded, and phase 4 owns refresh behaviour. The gesture map in `02_kobo/01_ui_ux.md`
   now carries what the reader actually does
+- 2026-09-20 : phase 4 done, and the folder with it. Screens now have two checks: a cheap one every
+  tick and a process-launching one on the 5 s cadence phase 1 measured. UD7 is two different
+  answers to the same check, page 1 taking the new state and pages 3 and 4 keeping what they have
+  behind a marker that is also the refresh control. The partial-refresh check the plan wanted from
+  a log is a test instead: a session changing state on page 1 moves 1264x45 pixels, 2% of the
+  panel. Then watched for real, with a background shell editing a tracked file while page 3 was on
+  screen: the marker appeared on the next cadence, the tree under it did not move, and the frame
+  was a quarter of the panel in the text mode. Refreshing page 4 when the file has left the
+  changeset pops back to the tree rather than drawing an empty page

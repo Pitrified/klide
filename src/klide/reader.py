@@ -15,11 +15,13 @@ the page functions return targets at all. Nothing on either side keeps a cursor.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from time import monotonic
 
 from klide.ahp import SessionState
-from klide.extract import ReadMarks, patch_for
+from klide.extract import AGENTS_POLL, AgentsUnavailableError, ReadMarks, changeset, patch_for
 from klide.extract import sessions as live_sessions
 from klide.frame import Frame
 from klide.input import Button, Direction, EventKind, InputEvent
@@ -70,8 +72,26 @@ class Screen:
         raise NotImplementedError
 
     def poll(self) -> bool:
-        """Whether the source behind this page has moved. False for a page nothing feeds."""
+        """Whether the source behind this page has moved. False for a page nothing feeds.
+
+        Called every tick, so whatever a page does here has to be cheap: a file read, not a
+        subprocess. The expensive check is `recheck`.
+        """
         return False
+
+    def recheck(self) -> bool:
+        """The slow check, on a cadence. Whether the screen needs redrawing as a result.
+
+        Split from `poll` because `claude agents --json` and `git diff` are process launches, and
+        the loop ticks twenty times a second. What each page does with what it finds differs by
+        UD7: page 1 takes the new state, pages 3 and 4 keep what they are showing and raise a
+        marker instead.
+        """
+        return False
+
+    def refresh(self) -> tuple[bool, str]:
+        """Redraw from the current source, which is what tapping the stale marker does (UD9)."""
+        return False, "nothing to refresh here"
 
     def rendered(self, metrics: Metrics) -> Rendered:
         page = self.page(metrics)
@@ -97,14 +117,36 @@ class Screen:
 
 
 class SessionsScreen(Screen):
-    """Page 1."""
+    """Page 1, which updates under the reader rather than holding still (UD7).
 
-    def __init__(self, states: list[SessionState]) -> None:
+    This is the page someone glances at to see whether anything wants them, so a state column that
+    is right only when the page was opened would be the whole point missed. `source` is what it
+    asks; without one it is a fixed list, which is what the gate and the tests want.
+    """
+
+    def __init__(
+        self, states: list[SessionState], source: Callable[[], list[SessionState]] | None = None
+    ) -> None:
         super().__init__()
         self.states = states
+        self.source = source
 
     def page(self, metrics: Metrics) -> Page:
         return sessions(self.states, metrics)
+
+    def recheck(self) -> bool:
+        if self.source is None:
+            return False
+        try:
+            found = self.source()
+        except AgentsUnavailableError:
+            # A CLI that is briefly unavailable is not a reason to blank the list. What is on
+            # screen stays, and the next check either recovers or keeps it.
+            return False
+        if found == self.states:
+            return False
+        self.states = found
+        return True
 
 
 class ConversationScreen(Screen):
@@ -149,7 +191,13 @@ class ConversationScreen(Screen):
 
 
 class ChangesScreen(Screen):
-    """Page 3."""
+    """Page 3, which holds still and says when it is out of date (UD7).
+
+    The opposite choice from page 1, for the opposite reason: a diff that repaints while it is
+    being read is the worst case for e-ink, and the reader is in the middle of something. What it
+    must not do is hold still silently, so it carries a marker, and the marker is the way to get
+    the new one (UD9).
+    """
 
     def __init__(self, state: SessionState) -> None:
         super().__init__()
@@ -159,9 +207,28 @@ class ChangesScreen(Screen):
     def page(self, metrics: Metrics) -> Page:
         return changes(self.state, metrics, stale=self.stale)
 
+    def recheck(self) -> bool:
+        if self.stale or not self.state.cwd:
+            return False
+        now = changeset(Path(self.state.cwd))
+        if now.files == self.state.changeset.files:
+            return False
+        self.stale = True
+        return True
+
+    def refresh(self) -> tuple[bool, str]:
+        now = changeset(Path(self.state.cwd), revision=self.state.changeset.revision + 1)
+        self.state = replace(self.state, changeset=now)
+        self.stale = False
+        return True, f"redrawn from revision {now.revision}, {len(now.files)} files"
+
 
 class DiffScreen(Screen):
-    """Page 4."""
+    """Page 4, which holds still and says when it is out of date, like page 3.
+
+    More sharply than page 3, in fact: reading the diff of a file that has since changed is worse
+    than useless, because every line of it is about a version that is gone.
+    """
 
     def __init__(self, state: SessionState, path: str, text: str) -> None:
         super().__init__()
@@ -172,6 +239,25 @@ class DiffScreen(Screen):
 
     def page(self, metrics: Metrics) -> Page:
         return one_diff(self.path, self.text, metrics, stale=self.stale)
+
+    def recheck(self) -> bool:
+        if self.stale or not self.state.cwd:
+            return False
+        if patch_for(Path(self.state.cwd), self.path) == self.text:
+            return False
+        self.stale = True
+        return True
+
+    def refresh(self) -> tuple[bool, str]:
+        text = patch_for(Path(self.state.cwd), self.path)
+        if not text:
+            # The file left the changeset entirely. An empty page 4 is a dead end, and the tree it
+            # came from is the page that can say what is there now, so the reader is sent back.
+            return False, f"{self.path} has no diff any more"
+        self.text = text
+        self.stale = False
+        self.offset = 0
+        return True, f"redrawn, {len(text.splitlines())} lines"
 
 
 def _recap_height(state: SessionState, metrics: Metrics) -> int:
@@ -205,6 +291,11 @@ class Reader:
     marks: ReadMarks = field(default_factory=ReadMarks)
     stack: list[Screen] = field(default_factory=list)
     projects: Path | None = None
+    #: How often the slow checks run. `AGENTS_POLL` came out of measuring the CLI call (U4), and
+    #: `git diff` in one repository is cheaper than that, so one cadence covers both.
+    cadence: float = AGENTS_POLL
+    now: Callable[[], float] = monotonic
+    _checked: float = 0.0
 
     @classmethod
     def over(cls, states: list[SessionState], metrics: Metrics) -> Reader:
@@ -224,7 +315,12 @@ class Reader:
         return " > ".join(screen.where() for screen in self.stack)
 
     def poll(self) -> bool:
-        return self.top.poll()
+        """Both checks: the cheap one every tick, the slow one on a cadence."""
+        moved = self.top.poll()
+        if self.now() - self._checked < self.cadence:
+            return moved
+        self._checked = self.now()
+        return self.top.recheck() or moved
 
     def frame(self, panel: Panel, metrics: Metrics) -> Frame:
         return render_lines(self.top.rendered(metrics).lines, panel, metrics)
@@ -295,8 +391,22 @@ class Reader:
             return self.push(ChangesScreen(self._state()))
         if target.action is Action.OPEN_FILE:
             return self.open_file(target.value)
-        # REFRESH is phase 4's; until then say so rather than looking broken.
-        return Outcome(False, f"{target.action} is not wired up yet")
+        if target.action is Action.REFRESH:
+            return self.refresh()
+        return Outcome(False, f"no handler for {target.action}")
+
+    def refresh(self) -> Outcome:
+        """Tapping the stale marker (UD9).
+
+        When the thing the page was about is gone, the answer is the page above, not an empty one.
+        """
+        redrawn, note = self.top.refresh()
+        if redrawn:
+            return Outcome(True, note)
+        if len(self.stack) > 1:
+            popped = self.pop()
+            return Outcome(popped.redraw, f"{note}, {popped.note}")
+        return Outcome(False, note)
 
     def _state(self) -> SessionState:
         for screen in reversed(self.stack):
@@ -353,6 +463,10 @@ class Reader:
 
 
 def from_this_host(metrics: Metrics, marks: ReadMarks | None = None) -> Reader:
-    """A reader over whatever sessions are running here."""
+    """A reader over whatever sessions are running here, re-asking as it goes."""
     marks = marks or ReadMarks()
-    return Reader(metrics=metrics, marks=marks, stack=[SessionsScreen(live_sessions(marks))])
+
+    def ask() -> list[SessionState]:
+        return live_sessions(marks)
+
+    return Reader(metrics=metrics, marks=marks, stack=[SessionsScreen(ask(), source=ask)])

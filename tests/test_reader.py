@@ -6,10 +6,11 @@ Everything here is about where a press lands and what it opens. What the pages l
 
 import json
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
-from klide.ahp import ChangesetFile, ChangesetState, FileEdit, SessionState
-from klide.extract import ReadMarks
+from klide.ahp import ChangesetFile, ChangesetState, FileEdit, SessionState, SessionStatus
+from klide.extract import AgentsUnavailableError, ReadMarks, changeset, patch_for
 from klide.input import Button, Direction, EventKind, InputEvent
 from klide.panel import KOBO_LIBRA_2
 from klide.reader import (
@@ -20,7 +21,8 @@ from klide.reader import (
     SessionsScreen,
 )
 from klide.render import Metrics
-from klide.views import Action, Page, sessions
+from klide.stream import dirty_rectangle
+from klide.views import STALE, Action, Page, sessions
 
 METRICS = Metrics.for_panel(KOBO_LIBRA_2)
 
@@ -273,3 +275,170 @@ def _a_repo(tmp_path: Path, dirty: bool = True) -> Path:
     if dirty:
         (tmp_path / "kept.txt").write_text("one\ntwo\nthree\n")
     return tmp_path
+
+
+# Live where it helps, stale where it does not (UD7)
+
+
+class Clock:
+    """A hand-wound clock, so a cadence can be tested without waiting for one."""
+
+    def __init__(self) -> None:
+        self.at = 0.0
+
+    def __call__(self) -> float:
+        return self.at
+
+    def past(self, cadence: float) -> None:
+        self.at += cadence + 1
+
+
+def test_the_session_list_takes_new_state_while_it_is_being_looked_at() -> None:
+    clock = Clock()
+    later = [a_session("one"), a_session("two", changeset=a_changeset("x.py"))]
+    screen = SessionsScreen(list(LIVE), source=lambda: later)
+    reader = Reader(metrics=METRICS, stack=[screen], now=clock)
+
+    assert not reader.poll()  # the cadence has not come round yet
+    clock.past(reader.cadence)
+    assert reader.poll()
+    assert screen.states == later
+
+
+def test_the_list_is_not_redrawn_when_nothing_changed() -> None:
+    clock = Clock()
+    screen = SessionsScreen(list(LIVE), source=lambda: list(LIVE))
+    reader = Reader(metrics=METRICS, stack=[screen], now=clock)
+    clock.past(reader.cadence)
+    assert not reader.poll()
+
+
+def test_a_cli_that_stops_answering_leaves_the_list_alone() -> None:
+    def fails() -> list[SessionState]:
+        raise AgentsUnavailableError("gone")
+
+    clock = Clock()
+    screen = SessionsScreen(list(LIVE), source=fails)
+    reader = Reader(metrics=METRICS, stack=[screen], now=clock)
+    clock.past(reader.cadence)
+    assert not reader.poll()
+    assert screen.states == LIVE
+
+
+def test_the_changes_page_holds_still_and_raises_a_marker(tmp_path: Path) -> None:
+    repo = _a_repo(tmp_path)
+    state = a_session("one", cwd=str(repo), changeset=changeset(repo))
+    clock = Clock()
+    screen = ChangesScreen(state)
+    reader = Reader(metrics=METRICS, stack=[SessionsScreen([state]), screen], now=clock)
+
+    (repo / "added.txt").write_text("new\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+    clock.past(reader.cadence)
+
+    assert reader.poll()
+    assert screen.stale
+    # Held still: the new file is not on the page until the marker is tapped.
+    assert not any("added.txt" in line for line in _texts(screen))
+    assert STALE in _texts(screen)
+
+
+def test_tapping_the_marker_redraws_the_changes(tmp_path: Path) -> None:
+    repo = _a_repo(tmp_path)
+    state = a_session("one", cwd=str(repo), changeset=changeset(repo))
+    screen = ChangesScreen(state)
+    reader = Reader(metrics=METRICS, stack=[SessionsScreen([state]), screen])
+    (repo / "added.txt").write_text("new\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+    screen.stale = True
+
+    marker = next(t for t in screen.page(METRICS).targets if t.action is Action.REFRESH)
+    assert reader.act(tap(100, row_of(reader, marker.line))).redraw
+    assert not screen.stale
+    assert any("added.txt" in line for line in _texts(screen))
+    assert screen.state.changeset.revision == 1
+
+
+def test_the_diff_page_says_when_the_file_under_it_has_moved(tmp_path: Path) -> None:
+    repo = _a_repo(tmp_path)
+    state = a_session("one", cwd=str(repo), changeset=changeset(repo))
+    clock = Clock()
+    screen = DiffScreen(state, "kept.txt", patch_for(repo, "kept.txt"))
+    reader = Reader(metrics=METRICS, stack=[SessionsScreen([state]), screen], now=clock)
+    before = screen.text
+
+    (repo / "kept.txt").write_text("one\ntwo\nthree\nfour\n")
+    clock.past(reader.cadence)
+
+    assert reader.poll() and screen.stale
+    assert screen.text == before  # reading a diff that repaints under you is the worst case
+
+
+def test_tapping_the_marker_on_the_diff_shows_the_new_one(tmp_path: Path) -> None:
+    repo = _a_repo(tmp_path)
+    state = a_session("one", cwd=str(repo), changeset=changeset(repo))
+    screen = DiffScreen(state, "kept.txt", patch_for(repo, "kept.txt"))
+    reader = Reader(metrics=METRICS, stack=[SessionsScreen([state]), ChangesScreen(state), screen])
+    (repo / "kept.txt").write_text("one\ntwo\nthree\nfour\n")
+    screen.stale = True
+
+    marker = next(t for t in screen.page(METRICS).targets if t.action is Action.REFRESH)
+    assert reader.act(tap(100, row_of(reader, marker.line))).redraw
+    assert "+four" in screen.text and not screen.stale
+
+
+def test_a_file_that_left_the_changeset_pops_back_rather_than_emptying_the_page(
+    tmp_path: Path,
+) -> None:
+    # The deliberate case: refreshing page 4 has nothing to draw, and the tree it came from is the
+    # page that can say what is there now.
+    repo = _a_repo(tmp_path)
+    state = a_session("one", cwd=str(repo), changeset=changeset(repo))
+    screen = DiffScreen(state, "kept.txt", patch_for(repo, "kept.txt"))
+    reader = Reader(metrics=METRICS, stack=[SessionsScreen([state]), ChangesScreen(state), screen])
+    (repo / "kept.txt").write_text("one\ntwo\n")  # reverted
+
+    outcome = reader.refresh()
+    assert outcome.redraw
+    assert "no diff any more" in outcome.note
+    assert reader.path.endswith("changes")
+
+
+def test_a_page_that_is_already_stale_is_not_rechecked_into_a_second_redraw(
+    tmp_path: Path,
+) -> None:
+    repo = _a_repo(tmp_path)
+    state = a_session("one", cwd=str(repo), changeset=changeset(repo))
+    clock = Clock()
+    screen = ChangesScreen(state)
+    reader = Reader(metrics=METRICS, stack=[SessionsScreen([state]), screen], now=clock)
+    (repo / "added.txt").write_text("new\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+
+    clock.past(reader.cadence)
+    assert reader.poll()
+    clock.past(reader.cadence)
+    assert not reader.poll()
+
+
+def _texts(screen: ChangesScreen | DiffScreen) -> list[str]:
+    return [line.text for line in screen.page(METRICS).column.lines]
+
+
+def test_a_state_change_on_page_one_is_a_partial_refresh() -> None:
+    """The check phase 4 asks for, done deterministically rather than by reading a log.
+
+    Page 1 updates in place (UD7), and the thing that makes that affordable is that only the state
+    column moves. If the whole page were resent on every tick, a list that updates would cost a
+    full refresh every few seconds, which is the one thing a panel like this cannot spend.
+    """
+    before = [a_session("one"), a_session("two")]
+    after = [a_session("one"), replace(a_session("two"), status=SessionStatus.INPUT_NEEDED)]
+    panel = KOBO_LIBRA_2
+
+    first = Reader.over(before, METRICS).frame(panel, METRICS)
+    second = Reader.over(after, METRICS).frame(panel, METRICS)
+    patch = dirty_rectangle(first, second)
+
+    assert patch is not None
+    assert patch.height < panel.height // 4

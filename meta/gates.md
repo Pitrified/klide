@@ -50,7 +50,7 @@ of AD9 and the reason the viewer exists at all.
 | test | a unit test failing | by changing an expected panel dimension |
 | frames | a rendered frame differing from its reference, anywhere, by any amount | by moving the render margin one pixel, which it located at x=26 y=31 |
 | session | a screen or a refresh cost differing from its reference across nine scripted steps | three ways: a one-screen pan error, shrinking the page cache, and a redraw policy change that moves no pixels |
-| views | any of the six views laying out differently, in content or in page height | by merging the repeated speaker labels in the conversation view, which it located at x=78 y=1999 |
+| views | any of the four pages laying out differently, in content or in page height | by merging the repeated speaker labels in the conversation view, which it located at x=78 y=1999 |
 
 House style runs the [deslopify](../.claude/skills/deslopify/) scanner restricted to its `house_rules` category.
 The other categories stay advisory and are run by hand, because they need triage: a list of three real things
@@ -104,8 +104,10 @@ in [`../docs/simulator.md`](../docs/simulator.md).
 
 ## The views gate
 
-Filled by app phase 4. `uv run klide-views` lays out all six views and compares each rendered page
-against its reference.
+Filled by app phase 4. `uv run klide-views` lays out the four pages of the reader UI and compares
+each rendered page against its reference. Six references, not four: the empty changeset and the
+stale marker are states a page can be in that a reference of the page alone would never see, and
+the unrouted file view is still gated because it is still code.
 
 Everything it renders comes from `tests/fixtures`, never from the machine it runs on. A view fed
 from live git state or a real transcript would compare a different page on every run, which is the

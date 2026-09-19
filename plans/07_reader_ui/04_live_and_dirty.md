@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 ---
 
 # Phase 4 - live where it helps, stale where it does not
@@ -49,3 +49,33 @@ becoming lying.
 - The refresh ledger shows the state column update as a partial refresh, not a full one.
 
 ## What the implementation found
+
+Implemented 2026-09-20.
+
+**Two checks, not one.** `Screen.poll` is the cheap one and runs every tick, which is twenty times
+a second; `Screen.recheck` is the one that launches a process and runs on a cadence. The cadence
+is `AGENTS_POLL`, the 5 s that came out of phase 1's measurement of the CLI, and `git diff` in one
+repository is cheaper than that, so one number covers both. Splitting them is what keeps a page
+that watches a repository from forking a process at the tick rate.
+
+**Page 1 takes the new state; pages 3 and 4 keep what they have and raise a marker.** That is UD7
+implemented as two different answers to the same `recheck`, which is the clearest place to see the
+decision in the code.
+
+**The partial-refresh check, done deterministically.** The plan asked for it from the host's log.
+It is a test instead: render page 1 with a session idle, render it again with the same session
+needing input, and take the dirty rectangle. 1264x45, which is 2% of the panel, and `pick_waveform`
+gives it the text mode. A reference or a log reading would both have been weaker; this one fails if
+the page ever stops being cheap to update.
+
+It was then watched happening. With `scripts/drive.py --pages` on page 3 of this repo, a tracked
+file was edited by a background shell 16 s into the run; the marker appeared on the next cadence,
+the tree underneath did not move, and the frame that carried the marker was 1264x441, a quarter of
+the panel, in the text mode.
+
+**A file that has left the changeset pops back to the tree.** Refreshing page 4 when the patch is
+empty gives the reader the page that can say what is there now, rather than an empty one. The note
+says both halves: what was gone, and where they ended up.
+
+**A CLI that stops answering leaves the list alone.** `claude agents --json` failing for one
+cadence is not a reason to blank page 1; what is on screen stays until a check succeeds.
