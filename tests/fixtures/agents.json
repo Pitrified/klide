@@ -1,0 +1,20 @@
+[
+  {
+    "pid": 194050,
+    "cwd": "/home/pmn/repos/klide",
+    "kind": "interactive",
+    "startedAt": 1788543828458,
+    "sessionId": "61a5d506-5366-4db2-a53b-9d3f15e75761",
+    "name": "klide-g4-1",
+    "status": "idle"
+  },
+  {
+    "pid": 496490,
+    "cwd": "/home/pmn/repos/klide",
+    "kind": "interactive",
+    "startedAt": 1788804391000,
+    "sessionId": "3730563b-4457-4dca-97c4-9a40b11898fb",
+    "name": "klide-g4-2",
+    "status": "busy"
+  }
+]

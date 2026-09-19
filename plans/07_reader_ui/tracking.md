@@ -29,7 +29,7 @@ The gesture map this supersedes is in [`../02_kobo/01_ui_ux.md`](../02_kobo/01_u
 
 | #  | Phase                 | Plan                                              | Status |
 | -- | --------------------- | ------------------------------------------------- | ------ |
-| 1  | Extractor and model   | [`01_extractor.md`](01_extractor.md)              | planned |
+| 1  | Extractor and model   | [`01_extractor.md`](01_extractor.md)              | done |
 | 2  | Navigation            | [`02_navigation.md`](02_navigation.md)            | planned |
 | 3  | The four pages        | [`03_four_pages.md`](03_four_pages.md)            | planned |
 | 4  | Live and stale        | [`04_live_and_dirty.md`](04_live_and_dirty.md)    | planned |
@@ -74,3 +74,14 @@ Append-only. Newest at the bottom.
   refresh mechanism, since `pick_waveform` already returns the full waveform for a patch that size,
   and the coalescer and the socket handling both got their current shape from failures, so a loop per
   page would copy them or drift. All four phases move to planned
+- 2026-09-19 : phase 1 done. `klide.ahp` holds the types, named after AHP's state model, and
+  `klide.extract` fills them from the three local sources; `uv run klide-extract` prints the five
+  live sessions on this box with their repo, branch, derived state and changeset. U4 answered by
+  measuring: `claude agents --json` costs 0.22 s, so it is polled at 5 s while the transcripts keep
+  0.25 s. The derivation rule was written in prose in the module docstring before it was
+  implemented, and then measured: 758 real pause points across every transcript on this box, 43 of
+  which end in a question mark, all five sampled being genuine questions. High precision, low
+  recall, and the direction to be wrong in for a glanceable column. Rule 2 was checked by replaying
+  a real transcript prefix by prefix at each of its three `AskUserQuestion` calls. The hole nobody
+  can close from these sources is a permission prompt, which reaches neither the CLI nor the
+  transcript

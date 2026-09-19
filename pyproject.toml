@@ -22,6 +22,7 @@ klide-skeleton = "klide.skeleton:main"
 klide-session = "klide.session:main"
 klide-views = "klide.viewcmd:main"
 klide-live = "klide.live:main"
+klide-extract = "klide.extract:main"
 
 [build-system]
 requires = ["hatchling"]
