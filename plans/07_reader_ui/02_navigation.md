@@ -1,5 +1,5 @@
 ---
-status: draft
+status: planned
 ---
 
 # Phase 2 - the stack, the tap and the back control
@@ -18,14 +18,19 @@ events this needs.
 
 ## Plan
 
-1. Decide U7 before writing anything: whether navigation lives inside the loop in
-   [`../../src/klide/serve.py`](../../src/klide/serve.py) or above it. The stack's state goes wherever
-   that lands.
+1. Settle U7 against the code, starting from the assessment in
+   [`00_start.md`](00_start.md#u7-assessed-what-the-serve-loop-actually-knows): one loop in
+   [`../../src/klide/serve.py`](../../src/klide/serve.py) with its three page specific points (the
+   source polled, `apply_event`, `render`) turned into calls on the top of the stack, and `LiveState`
+   demoted to the conversation page's own state. The stack object sits between `run` and the pages.
+   The assessment is a recommendation; if writing it shows the split is somewhere else, record that.
 2. A layout that records where each row was drawn, so a y coordinate maps back to the thing it names.
    `lay_conversation` in [`../../src/klide/views.py`](../../src/klide/views.py) already returns where
    each turn began, which is the same trick and the pattern to follow.
-3. The back control, in the top right of every page, and U2 answered by measuring what reserving the
-   strip costs in lines rather than by guessing.
+3. The back control, top right on every page, on the recap's own first line per UD11. No strip is
+   reserved, so what has to be measured is the other direction: how much of the first line the control
+   takes, since that is the width the recap's name and repo have to fit in and the width page 4 trims
+   its path against.
 4. Route tap, button and swipe through one place that owns the stack, so an event that means nothing
    on the current page is refused visibly rather than dropped. The diary review's fifth pattern is
    that a press correctly ignored and a press that never arrived look identical.
@@ -42,6 +47,8 @@ events this needs.
 
 - The viewer can walk from page 1 to page 4 and back by tapping and pressing, with no view reachable
   by two different routes.
+- A page change is a full refresh and gets the waveform for one. `pick_waveform` should already do
+  this, since a new page is most of the panel; confirmed from the host's log rather than assumed.
 - A tap on a row opens that row and not the one above it, checked on the first row, the last row, and
   the gap between two rows.
 - Every ignored event leaves a line saying it was ignored and why.

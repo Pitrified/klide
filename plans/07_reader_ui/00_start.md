@@ -133,9 +133,24 @@ own text and this is what it was waiting for.
   constrains is the marker's size, since something to be tapped has a minimum that something to be
   read does not.
 
+* **UD10. The diff totals are the only tappable thing in the recap.** The name, the repo and the
+  branch are text on every page. The alternative, a recap that always opens page 3, makes the recap
+  on page 3 a link to itself, and a region that is live on one page and inert on the next is learned
+  the hard way.
+* **UD11. The back control shares the recap's line.** Top right, on every page, on the same line the
+  recap starts on, so it costs no vertical space of its own. No strip is reserved for it, which was
+  the recommendation and is not what was chosen. What it constrains is the recap's first line: it
+  ends where the control begins, so the name and the repo have a shorter line than the ones under
+  them, and page 4's trimmed-from-the-left path is trimmed against that shorter width.
+* **UD12. Read is per host, per session, and tapping in marks it read.** The device holds no durable
+  state (K5), so the marker lives with the extractor. Marking on arrival rather than on reaching the
+  bottom: a session opened and glanced at is a session read, and the rule that needs no scroll
+  tracking is the one to start with.
+
 ## Open questions
 
 Numbered `U` for this folder, continuing across batches.
+Answered on 2026-09-19, in the second sitting.
 
 - U1: What the recap at the top of pages 2, 3 and 4 is tappable for, beyond the diff totals on page 2.
   Tapping the recap on page 3 has no obvious destination, and a region that is tappable on one page
@@ -143,32 +158,77 @@ Numbered `U` for this folder, continuing across batches.
   a. only the diff totals on page 2 are a target, everything else in the recap is inert everywhere
   b. the recap is a target on every page and always goes to page 3
   Recommended: a, because b makes the recap on page 3 a link to itself.
-  NEW_ANS:
+  NEW_ANS: a. The diff totals on page 2 are the only target in the recap. Everything else in it is
+  text on every page. Recorded as UD10.
 - U2: Whether the back control occupies a reserved strip on every page, and what that costs.
   A fixed row at the top is the easiest thing to aim at and the easiest to keep consistent, and it
   spends vertical space on all four pages on a screen where the body is the point.
   Recommended: reserve it, measure what it costs in lines, and revisit if it is more than two.
-  NEW_ANS:
+  NEW_ANS: On every page, and on the same line as the top of the recap so it costs no vertical
+  space of its own. Not the recommendation: no strip is reserved. Recorded as UD11, with what it
+  constrains.
 - U3: Where the read marker lives and when a session counts as read. Per session, on the host, since
   the device holds no durable state (K5). Whether arriving at page 2 marks it read immediately, or
   only once the reader reaches the bottom, is the part with a real answer either way.
-  NEW_ANS:
+  NEW_ANS: Per host, per session, and tapping into a conversation marks it read. The simple rule
+  on purpose. Recorded as UD12.
 - U4: How often the extractor runs, and whether a subprocess per poll is acceptable.
   `claude agents --json` is a process launch; the transcripts are files that can be watched. A
   plausible shape is watching the files continuously and running the CLI on a slower cadence.
   Recommended: measure what the call costs before designing around it.
-  NEW_ANS:
+  NEW_ANS: Measure it. The cadence is chosen from the measurement in phase 1, not before it.
 - U5: What happens to `one_file`, the sixth view. The four pages leave it with no route, and "open
   the whole file, not just its diff" is a natural page 5 rather than a view to delete.
   Recommended: leave it in place, unrouted, until someone wants it.
-  NEW_ANS:
+  NEW_ANS: Left in place, unrouted. Browsing the whole repo, which is what would give it a route,
+  is deferred with it.
 - U6: When the `changeKind` cycle arrives, and what control moves it. Wanted per UD5, and it needs a
   target on a screen whose top strip is already spoken for by the back control. The stale marker
   solved the same problem by being its own control (UD9), which may or may not generalise: a marker
   appears when there is something to say, and a scope cycle has to be there before the reader knows
   they want it.
-  NEW_ANS:
+  NEW_ANS: Deferred, and not implemented now. One change kind is shown, the one since the last
+  commit, which is UD5. No control is designed for a cycle that does not exist yet.
 - U7: Whether all four pages are served by the loop in
   [`../../src/klide/serve.py`](../../src/klide/serve.py), which today knows only the conversation,
   or whether navigation sits above it. This decides where the stack's state lives.
-  NEW_ANS:
+  NEW_ANS: Assess rather than pick, which is below. The assessment recommends one loop with three
+  hooks, and it is a recommendation, not yet a decision.
+
+## U7 assessed: what the serve loop actually knows
+
+Read at 2026-09-19 against `src/klide/serve.py` as committed at `85a1821`.
+
+`run()` does four things in its loop. Three of them have nothing to do with which page is on screen:
+
+- drain the input queue and stop when the reader thread posts `None`
+- ask a `Coalescer` whether a burst of changes has settled
+- render, take a `dirty_rectangle` against the previous frame, pick a waveform, send, and treat a
+  dead socket as the end of the session rather than a fault
+
+The fourth is page specific and there are exactly three places it shows:
+
+| place | today | what a stack needs |
+| --- | --- | --- |
+| the source being polled | one `Follower` over one transcript | whichever source the current page reads |
+| `apply_event` | `LiveState.page_back` / `page_forward` / tap returns to the tail | the current page's handler, plus push and pop |
+| `render` | `fill()`, hardwired to `conversation` | the current page's own |
+
+So the recommendation is one loop with those three turned into calls on whatever is on top of the
+stack, and `LiveState` demoted from "what the viewer is looking at" to the conversation page's own
+state. The stack itself lives in a new object between `run` and the pages, which is the answer to
+where the navigation state goes: not in `LiveState`, not in `run`.
+
+Two things checked rather than assumed, because the objection to one loop would be that a page
+change is not the same kind of update as a new turn:
+
+- A page change does not need a new refresh mechanism. `pick_waveform` already returns `GC16` once a
+  patch covers three quarters of the panel, and a whole new page always will, so the full refresh a
+  page change wants is what it already gets.
+- The three shared jobs are not trivial to duplicate. The coalescer has two limits because either
+  alone behaved badly, and the socket handling says which of three endings happened because it once
+  said none of them. A loop per page would copy both, or drift from them.
+
+What is not settled by this: whether the back control is an event the stack handles or a page's own,
+and whether a page that has been popped keeps its scroll position when it is pushed again. Both are
+phase 2's to answer with code in front of them.

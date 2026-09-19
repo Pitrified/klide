@@ -1,5 +1,5 @@
 ---
-status: draft
+status: planned
 ---
 
 # Phase 3 - the four pages
@@ -20,9 +20,11 @@ exist in some form already; the work is as much removal as addition.
 
 1. Page 1 from `conversations` in [`../../src/klide/views.py`](../../src/klide/views.py), which today
    shows a name, a turn count and a timestamp. It gains the repo and the state and loses the bullet
-   marker, per the specification.
+   marker, per the specification. Read is per host per session and a tap marks it read (UD12), so the
+   row a reader just came back from is the one whose state has changed.
 2. The recap header, shared by pages 2, 3 and 4: name, repo, branch, and the added and removed
-   totals. One implementation, not three.
+   totals. One implementation, not three. Its first line is short by whatever the back control takes
+   (UD11), and the totals are the only part of it a tap means anything on (UD10).
 3. Page 3 as a tree, folding `changed_files` and `file_tree` into one view. Collapse single child
    folders onto one row, because the column is 47 characters and indentation spends it fastest.
 4. Page 4 from `one_diff`, which already renders a patch; what it gains is the left trim on a long

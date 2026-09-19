@@ -21,21 +21,24 @@ The gesture map this supersedes is in [`../02_kobo/01_ui_ux.md`](../02_kobo/01_u
 - Page 1 updates in place; pages 3 and 4 hold still and say when they are stale (UD7).
 - Page 3 is a tree of touched files, absorbing the flat changed files view and the full file tree (UD8).
 - The stale marker is itself the refresh control, so it costs no room in the top strip (UD9).
+- The diff totals are the only tappable part of the recap (UD10).
+- The back control sits on the recap's own first line, so no strip is reserved for it (UD11).
+- Read is per host, per session, and tapping into a conversation marks it read (UD12).
 
 ## Phases
 
 | #  | Phase                 | Plan                                              | Status |
 | -- | --------------------- | ------------------------------------------------- | ------ |
 | 1  | Extractor and model   | [`01_extractor.md`](01_extractor.md)              | planned |
-| 2  | Navigation            | [`02_navigation.md`](02_navigation.md)            | draft |
-| 3  | The four pages        | [`03_four_pages.md`](03_four_pages.md)            | draft |
-| 4  | Live and stale        | [`04_live_and_dirty.md`](04_live_and_dirty.md)    | draft |
+| 2  | Navigation            | [`02_navigation.md`](02_navigation.md)            | planned |
+| 3  | The four pages        | [`03_four_pages.md`](03_four_pages.md)            | planned |
+| 4  | Live and stale        | [`04_live_and_dirty.md`](04_live_and_dirty.md)    | planned |
 
 Status values: draft / planned / in progress / done / superseded / discarded.
 
-Phase 1 is planned because it needs nothing that does not exist: three local sources, no device, no
-screen decisions. The rest stay draft because U7 decides where phase 2's state lives and phase 1's
-measurements decide U4.
+All four are planned since the U batch was answered. Phase 1 still goes first: it needs nothing that
+does not exist, and its measurement of what `claude agents --json` costs is what settles U4's
+cadence. Phase 2 opens with the split U7 asked about, which is assessed but not decided.
 
 ## Log
 
@@ -58,3 +61,16 @@ Append-only. Newest at the bottom.
   way to fix it. Noted against U6 that this does not obviously generalise to the `changeKind` cycle,
   because a marker appears when there is something to say and a scope control has to be present
   before the reader knows they want it
+- 2026-09-19 : answered U1 to U7. The recap's diff totals are its only tap target (UD10); the back
+  control shares the recap's first line rather than getting a strip, which was not the recommendation
+  and which makes the recap's first line shorter than the ones under it (UD11); read is per host per
+  session and tapping in marks it read (UD12); the extractor's cadence waits on a measurement in
+  phase 1; `one_file` stays unrouted and repo browsing is deferred with it; the `changeKind` cycle is
+  deferred and only the uncommitted kind is shown. U7 was answered with "assess", so
+  `src/klide/serve.py` was read and the assessment written into `00_start.md`: its loop does four
+  things and three of them are page independent, so the recommendation is one loop with the source,
+  `apply_event` and `render` turned into calls on the top of a stack, and `LiveState` demoted to the
+  conversation page's state. Two objections checked rather than assumed: a page change needs no new
+  refresh mechanism, since `pick_waveform` already returns the full waveform for a patch that size,
+  and the coalescer and the socket handling both got their current shape from failures, so a loop per
+  page would copy them or drift. All four phases move to planned
