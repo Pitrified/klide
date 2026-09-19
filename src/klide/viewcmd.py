@@ -1,8 +1,8 @@
 """Render every view from fixtures and compare each against its reference.
 
 The third gate of the same shape: the frame gate checks one static page, the session gate checks a
-driven client, and this checks what the six views look like. A layout regression fails here and
-names the view it moved, instead of being noticed on a device weeks later.
+driven client, and this checks what the pages look like. A layout regression fails here and names
+the page it moved, instead of being noticed on a device weeks later.
 
 Everything it renders comes from `tests/fixtures`, never from the machine it runs on. A view fed
 from live git state or a real transcript would compare a different page on every run, which is the
@@ -15,6 +15,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from klide.ahp import ChangesetFile, ChangesetState, FileEdit, SessionState, SessionStatus
 from klide.compare import (
     ReferenceMissingError,
     compare,
@@ -24,18 +25,15 @@ from klide.compare import (
 )
 from klide.panel import KOBO_LIBRA_2, Panel
 from klide.render import Metrics, render_column
-from klide.text import Column
 from klide.transcript import read
 from klide.views import (
-    ChangedFile,
-    Session,
+    Page,
     View,
-    changed_files,
-    conversation,
-    conversations,
-    file_tree,
+    changes,
+    conversation_page,
     one_diff,
     one_file,
+    sessions,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,30 +41,69 @@ FIXTURES = ROOT / "tests" / "fixtures"
 REFERENCES = ROOT / "tests" / "references" / "views"
 ARTIFACTS = ROOT / "build" / "frames" / "views"
 
-SESSIONS = [
-    Session(name="klide, phase 4", turns=5, updated="today", current=True),
-    Session(name="klide, phase 3", turns=61, updated="today"),
-    Session(name="linux-box-cloudflare", turns=12, updated="yesterday"),
+
+def edit(path: str, added: int, removed: int, binary: bool = False) -> ChangesetFile:
+    return ChangesetFile(
+        id=path, edit=FileEdit(path=path, added=added, removed=removed, binary=binary)
+    )
+
+
+CHANGESET = ChangesetState(
+    files=(
+        edit("src/klide/render.py", 61, 28),
+        edit("src/klide/views.py", 181, 0),
+        edit("src/klide/document.py", 169, 0),
+        edit("tests/references/views/changes.png", 0, 0, binary=True),
+        edit("tests/test_views.py", 94, 0),
+        edit("meta/gates.md", 14, 2),
+        edit("README.md", 3, 1),
+    )
+)
+
+#: The one a reader would tap into, and the one page 3 is drawn from.
+CURRENT = SessionState(
+    session_id="61a5d506-5366-4db2-a53b-9d3f15e75761",
+    title="klide-g4-1",
+    project="klide",
+    branch="main",
+    working_directories=("/home/pmn/repos/klide",),
+    status=SessionStatus.IDLE | SessionStatus.IS_READ,
+    activity="idle, last spoke assistant in turn de9a771c",
+    turns=61,
+    changeset=CHANGESET,
+)
+
+LIVE = [
+    CURRENT,
+    SessionState(
+        session_id="3730563b-4457-4dca-97c4-9a40b11898fb",
+        title="klide-g4-2",
+        project="klide",
+        branch="main",
+        status=SessionStatus.INPUT_NEEDED,
+        activity="input needed: AskUserQuestion in turn a7da92d6",
+        turns=2577,
+    ),
+    SessionState(
+        session_id="baa8ccea-bb7c-4f18-8fff-405faf76b9f1",
+        title="linux-box-cloudflare",
+        project="linux-box-cloudflare",
+        branch="feat/tunnel-rotation",
+        status=SessionStatus.IDLE | SessionStatus.IS_READ,
+        activity="idle, last spoke assistant in turn 284e274b",
+        turns=12,
+    ),
 ]
 
-CHANGED = [
-    ChangedFile(path="src/klide/render.py", added=61, removed=28),
-    ChangedFile(path="src/klide/views.py", added=181, removed=0),
-    ChangedFile(path="src/klide/document.py", added=169, removed=0),
-    ChangedFile(path="tests/test_views.py", added=94, removed=0),
-    ChangedFile(path="meta/gates.md", added=14, removed=2),
-]
-
-TREE = [
-    "src/klide/frame.py",
-    "src/klide/panel.py",
-    "src/klide/render.py",
-    "src/klide/views.py",
-    "tests/test_views.py",
-    "docs/protocol.md",
-    "docs/simulator.md",
-    "README.md",
-]
+#: The state this repo is in most of the time, and the one page 3 has to be designed for.
+CLEAN = SessionState(
+    session_id="61a5d506-5366-4db2-a53b-9d3f15e75761",
+    title="klide-g4-1",
+    project="klide",
+    branch="main",
+    status=SessionStatus.IDLE,
+    turns=61,
+)
 
 SAMPLE_FILE = '''"""Panel geometry."""
 
@@ -89,17 +126,23 @@ class Panel:
 '''
 
 
-def build(panel: Panel = KOBO_LIBRA_2) -> dict[View, Column]:
-    """Every view, laid out from the fixtures. No panel and no pixels involved."""
+def build(panel: Panel = KOBO_LIBRA_2) -> dict[View, Page]:
+    """Every page, laid out from the fixtures. No panel and no pixels involved."""
     metrics = Metrics.for_panel(panel)
     turns = read(FIXTURES / "transcript.jsonl")
     diff_text = (FIXTURES / "sample.diff").read_text()
     return {
-        View.CONVERSATION: conversation(turns, metrics),
-        View.CONVERSATIONS: conversations(SESSIONS, metrics),
-        View.CHANGED_FILES: changed_files(CHANGED, metrics),
-        View.DIFF: one_diff("src/klide/render.py", diff_text, metrics),
-        View.FILE_TREE: file_tree(TREE, metrics),
+        View.SESSIONS: sessions(LIVE, metrics),
+        View.CONVERSATION: conversation_page(CURRENT, turns, metrics)[0],
+        View.CHANGES: changes(CURRENT, metrics),
+        # Two things at once, deliberately: the empty changeset, and the stale marker that is also
+        # the refresh control. Both are states a reference would otherwise never see.
+        View.CHANGES_EMPTY: changes(CLEAN, metrics, stale=True),
+        # A path longer than the header, so the left trim is in the reference rather than in a
+        # test alone.
+        View.DIFF: one_diff(
+            "src/klide/rendering/backends/experimental/render.py", diff_text, metrics
+        ),
         View.FILE: one_file("src/klide/panel.py", SAMPLE_FILE, metrics, language="python"),
     }
 
@@ -112,10 +155,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     panel = KOBO_LIBRA_2
-    columns = build(panel)
+    pages = build(panel)
     failures = 0
 
-    for view, column in columns.items():
+    for view, page in pages.items():
+        column = page.column
         frame = render_column(column, panel)
         produced = ARTIFACTS / f"{view.value}.png"
         save_frame(frame, produced)
@@ -154,13 +198,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"views:   difference {difference.relative_to(ROOT)}, differing pixels in red")
 
     if args.update:
-        print(f"views: wrote {len(columns)} references to {REFERENCES.relative_to(ROOT)}")
+        print(f"views: wrote {len(pages)} references to {REFERENCES.relative_to(ROOT)}")
         return 0
     if failures:
-        print(f"views: {failures} of {len(columns)} views differ")
+        print(f"views: {failures} of {len(pages)} views differ")
         print("views: if the change was intended, re-run with --update and review the diffs")
         return 1
-    print(f"views: all {len(columns)} views match their references")
+    print(f"views: all {len(pages)} views match their references")
     return 0
 
 

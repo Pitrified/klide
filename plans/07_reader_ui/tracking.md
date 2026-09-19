@@ -31,7 +31,7 @@ The gesture map this supersedes is in [`../02_kobo/01_ui_ux.md`](../02_kobo/01_u
 | -- | --------------------- | ------------------------------------------------- | ------ |
 | 1  | Extractor and model   | [`01_extractor.md`](01_extractor.md)              | done |
 | 2  | Navigation            | [`02_navigation.md`](02_navigation.md)            | planned |
-| 3  | The four pages        | [`03_four_pages.md`](03_four_pages.md)            | planned |
+| 3  | The four pages        | [`03_four_pages.md`](03_four_pages.md)            | done |
 | 4  | Live and stale        | [`04_live_and_dirty.md`](04_live_and_dirty.md)    | planned |
 
 Status values: draft / planned / in progress / done / superseded / discarded.
@@ -85,3 +85,11 @@ Append-only. Newest at the bottom.
   a real transcript prefix by prefix at each of its three `AskUserQuestion` calls. The hole nobody
   can close from these sources is a permission prompt, which reaches neither the CLI nor the
   transcript
+- 2026-09-19 : phase 3 done, taken before phase 2 because navigation has nothing to move between
+  until the pages exist and the pages need no loop. The six views are now four pages plus the
+  unrouted file view: `sessions`, `conversation_page`, `changes` and `one_diff`, each returning a
+  `Page` of a column and its targets. `conversations`, `changed_files` and `file_tree` are deleted
+  with their references (UD8). Page 4 keeps the path alone rather than the shared recap, which is
+  the specification over the phase plan's step 2. Two new references cover states rather than
+  pages: the empty changeset, which is what this repo shows most of the time, carrying the stale
+  marker so the refresh control is in a reference too. Both shown failing before being counted

@@ -1,4 +1,4 @@
-"""The six views and the document layer they are built from.
+"""The four pages and the document layer they are built from.
 
 These check content and style, not pixels. What the pages look like is the `views` gate's job; the
 split is what lets a layout question be asked without rendering anything.
@@ -13,8 +13,8 @@ from klide.panel import KOBO_LIBRA_2
 from klide.render import Metrics
 from klide.text import Column, measure
 from klide.transcript import Block, BlockKind, Role, Turn, read
-from klide.viewcmd import CHANGED, SESSIONS, TREE, build
-from klide.views import View, conversation
+from klide.viewcmd import CHANGESET, CURRENT, LIVE, build
+from klide.views import BACK, STALE, Action, View, conversation, one_diff
 
 FIXTURE = Path(__file__).parent / "fixtures" / "transcript.jsonl"
 
@@ -23,6 +23,10 @@ METRICS = Metrics.for_panel(KOBO_LIBRA_2)
 
 def texts(column: Column) -> list[str]:
     return [line.text for line in column.lines]
+
+
+def page_texts(view: View) -> list[str]:
+    return texts(build()[view].column)
 
 
 # Markdown
@@ -201,17 +205,17 @@ def test_a_long_diff_line_is_cut_rather_than_folded() -> None:
 # The views
 
 
-def test_every_view_builds_and_starts_with_its_own_name() -> None:
-    columns = build()
-    assert set(columns) == set(View)
-    for view, column in columns.items():
-        assert column.lines, view
-        assert column.lines[0].style.face is Face.BOLD
+def test_every_page_builds_and_opens_in_bold() -> None:
+    pages = build()
+    assert set(pages) == set(View)
+    for view, page in pages.items():
+        assert page.lines, view
+        assert page.lines[0].style.face is Face.BOLD
 
 
 def test_the_conversation_labels_who_is_speaking() -> None:
-    columns = build()
-    lines = texts(columns[View.CONVERSATION])
+    pages = build()
+    lines = texts(pages[View.CONVERSATION].column)
     assert "you" in lines
     assert "claude" in lines
 
@@ -223,43 +227,130 @@ def test_a_thinking_block_shows_as_a_marker_with_no_content() -> None:
 
 
 def test_tool_calls_appear_as_one_line_each() -> None:
-    columns = build()
-    lines = texts(columns[View.CONVERSATION])
+    pages = build()
+    lines = texts(pages[View.CONVERSATION].column)
     assert any("Bash" in line and "klide-skeleton" in line for line in lines)
 
 
 def test_tool_results_are_not_rendered() -> None:
     # They are usually long and rarely the thing being followed on a second screen.
-    columns = build()
-    lines = " ".join(texts(columns[View.CONVERSATION]))
+    pages = build()
+    lines = " ".join(texts(pages[View.CONVERSATION].column))
     assert "wrote reference tests/references/skeleton.png" not in lines
 
 
-def test_the_current_conversation_is_marked_and_darker() -> None:
-    columns = build()
-    current = next(s for s in SESSIONS if s.current)
-    line = next(line for line in columns[View.CONVERSATIONS].lines if current.name in line.text)
-    assert line.text.startswith("▶")
-    assert line.style.grey == INK
+def test_a_session_row_carries_the_repo_and_the_state() -> None:
+    lines = page_texts(View.SESSIONS)
+    waiting = next(s for s in LIVE if s.needs_input)
+    detail = lines[lines.index(waiting.title) + 1]
+    assert waiting.project in detail and "needs input" in detail and "unread" in detail
 
 
-def test_changed_files_totals_the_counts() -> None:
-    columns = build()
-    added = sum(f.added for f in CHANGED)
-    assert any(f"+{added}" in line for line in texts(columns[View.CHANGED_FILES]))
+def test_the_session_list_has_no_bullet_marker() -> None:
+    # The specification asked for a list with no bullet points, and the old view had an arrow
+    # marking the current conversation, which a second screen has no way to know.
+    assert not any(line.startswith(("\u25b6", "\u2022")) for line in page_texts(View.SESSIONS))
 
 
-def test_the_file_tree_shows_each_directory_once() -> None:
-    columns = build()
-    lines = texts(columns[View.FILE_TREE])
-    assert lines.count("src/") == 1
-    assert any(line.strip() == "klide/" for line in lines)
-    assert len(TREE) > 0
+def test_every_session_row_is_a_target_covering_its_own_lines() -> None:
+    page = build()[View.SESSIONS]
+    opens = [t for t in page.targets if t.action is Action.OPEN_SESSION]
+    assert [t.value for t in opens] == [s.session_id for s in LIVE]
+    for target in opens:
+        assert page.lines[target.line].text in {s.title for s in LIVE}
+        # The blank line between rows is outside the span, so a tap in the gap opens neither.
+        assert not page.lines[target.line + target.span - 1].text == ""
+
+
+def test_the_recap_carries_the_name_repo_branch_and_totals() -> None:
+    lines = page_texts(View.CHANGES)
+    assert lines[0].startswith(CURRENT.title)
+    assert f"{CURRENT.project}@{CURRENT.branch}" in lines[1]
+    assert f"+{CHANGESET.added} -{CHANGESET.removed}" in lines[1]
+
+
+def test_the_back_control_shares_the_first_line_of_the_recap() -> None:
+    # UD11: it costs width, not a line of its own.
+    page = build()[View.CHANGES]
+    back = next(t for t in page.targets if t.action is Action.BACK)
+    assert back.line == 0
+    assert page.lines[0].text == CURRENT.title + BACK
+    assert back.x0 > 0
+
+
+def test_only_the_totals_are_tappable_in_the_recap() -> None:
+    # UD10. The rest of the strip is text on every page.
+    page = build()[View.CHANGES]
+    on_the_recap = [t for t in page.targets if t.line <= 1]
+    assert {t.action for t in on_the_recap} == {Action.BACK, Action.OPEN_CHANGES}
+
+
+def test_the_tree_shows_each_folder_once_and_folds_single_child_folders() -> None:
+    lines = page_texts(View.CHANGES)
+    assert any(line == "src/klide/" for line in lines)
+    assert "src/" not in lines and "  klide/" not in lines
+
+
+def test_every_file_in_the_changeset_is_a_row_and_a_target() -> None:
+    page = build()[View.CHANGES]
+    opens = [t for t in page.targets if t.action is Action.OPEN_FILE]
+    assert sorted(t.value for t in opens) == sorted(f.id for f in CHANGESET.files)
+
+
+def test_a_file_row_carries_its_counts() -> None:
+    page = build()[View.CHANGES]
+    target = next(t for t in page.targets if t.value == "src/klide/render.py")
+    assert page.lines[target.line].text.endswith("+61 -28")
+
+
+def test_a_binary_file_says_binary_rather_than_zero() -> None:
+    page = build()[View.CHANGES]
+    target = next(t for t in page.targets if t.value.endswith(".png"))
+    assert page.lines[target.line].text.endswith("binary")
+
+
+def test_an_empty_changeset_says_so_rather_than_drawing_nothing() -> None:
+    assert "nothing uncommitted" in page_texts(View.CHANGES_EMPTY)
+    assert "clean" in page_texts(View.CHANGES_EMPTY)[1]
+
+
+def test_the_stale_marker_is_itself_the_refresh_target() -> None:
+    # UD9: the page that says it is out of date is also the way to fix it.
+    page = build()[View.CHANGES_EMPTY]
+    refresh = next(t for t in page.targets if t.action is Action.REFRESH)
+    assert page.lines[refresh.line].text == STALE
+
+
+def test_a_page_that_is_not_stale_has_no_refresh_target() -> None:
+    assert not [t for t in build()[View.CHANGES].targets if t.action is Action.REFRESH]
+
+
+def test_a_long_path_is_trimmed_from_the_left() -> None:
+    page = build()[View.DIFF]
+    head = page.lines[0].text
+    assert head.startswith("\u2026/") and head.endswith(BACK)
+    assert "render.py" in head
+
+
+def test_a_short_path_is_not_trimmed() -> None:
+    page = one_diff("a.py", "", METRICS)
+    assert page.lines[0].text == "a.py" + BACK
+
+
+def test_page_four_is_the_path_alone_not_the_whole_recap() -> None:
+    # The reader arrived from a tree that already showed them the repo and the branch, and the
+    # diff is the view whose alignment carries meaning, so it gets the room.
+    page = build()[View.DIFF]
+    assert CURRENT.project + "@" not in " ".join(texts(page.column)[:2])
+
+
+def test_the_unrouted_file_view_has_no_targets() -> None:
+    # U5: it stays in place with nothing routing to it, rather than being deleted.
+    assert build()[View.FILE].targets == ()
 
 
 def test_the_file_view_numbers_its_lines() -> None:
-    columns = build()
-    lines = [t for t in texts(columns[View.FILE]) if t.strip()]
+    lines = [t for t in page_texts(View.FILE) if t.strip()]
     assert any(line.lstrip().startswith("1 ") or line.lstrip().startswith("1  ") for line in lines)
 
 

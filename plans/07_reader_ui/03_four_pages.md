@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 ---
 
 # Phase 3 - the four pages
@@ -48,3 +48,31 @@ exist in some form already; the work is as much removal as addition.
 - A path longer than the header is trimmed from the left with the end still readable.
 
 ## What the implementation found
+
+Implemented 2026-09-19, before phase 2 rather than after it. The order in the tracking table put
+navigation first, and navigation has nothing to move between until the pages exist; the pages are
+also pure functions of phase 1's types, so they could be built and gated with no loop involved.
+Phase 2 follows with something to route to.
+
+**Page 4 is the path alone, not the shared recap.** The plan's step 2 said the recap is shared by
+pages 2, 3 and 4; the specification said page 4's top is the file path. The specification wins.
+The reader arrived at page 4 from a tree that already showed them the repo and the branch, and the
+diff is the view whose alignment carries meaning, so it gets the room. The recap is pages 2 and 3.
+
+**Views now return a `Page`, which is a column and its targets.** UD3 says the host knows which row
+a y coordinate landed in because the host laid the page out, and the place that knows is the layout
+itself. A `Target` names lines rather than pixels, since a column is laid out before anyone knows
+where the page will be scrolled to; turning lines into a y range is the renderer's job, which is
+phase 2's.
+
+**The gap between two session rows belongs to neither.** A tap that lands between them opens
+nothing, which beats opening whichever one the rounding favours.
+
+**Two references were added for states, not pages.** `changes-empty` is the empty changeset, which
+is what this repo shows most of the time, and it carries the stale marker as well, so the refresh
+control is in a reference rather than only in a test. Both were shown failing: widening the tree
+indent moved 1.23% of the changes page, and rewording the empty line moved 0.27% of the other and
+failed its test.
+
+**`conversations`, `changed_files` and `file_tree` are gone**, with their references, per UD8.
+`one_file` stays with no route and no targets (U5).
