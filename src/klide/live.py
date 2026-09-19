@@ -95,7 +95,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="serve a viewer over TCP instead of writing frames to disk",
     )
-    parser.add_argument("--bind", default="0.0.0.0", help="address to listen on with --serve")
+    parser.add_argument(
+        "--bind",
+        default="127.0.0.1",
+        # Loopback, because the viewer normally runs on this machine and anything that
+        # connects here can send button presses. A viewer elsewhere forwards this port
+        # over SSH, which arrives on loopback too; widening the bind is a deliberate
+        # choice for a tailnet address, not the default.
+        help="address to listen on with --serve",
+    )
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument(
         "--wait", type=float, default=300.0, help="how long to wait for a viewer to connect"
