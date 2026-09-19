@@ -38,6 +38,27 @@ no pushback in it was not worth having.
   instructions say not to spawn agents unless asked, so the facts get found inline. Nothing is lost
   except parallelism, and a round is only as slow as its slowest lookup.
 
+## The other grill-me
+
+[JuliusBrussee/skills](https://github.com/JuliusBrussee/skills) carries a skill of the same name, and
+it is a different design rather than a copy. Read on 2026-09-19 by cloning the repo, after the
+version above was already adapted. Recorded here because someone looking for the source of this skill
+will find two, and because the two disagree about something real.
+
+| | Pocock | Brussee |
+| --- | --- | --- |
+| batching | the whole frontier in one round | one question at a time |
+| structure | a design tree, recomputed each round | a decision map with fixed slots and a seven rung ladder |
+| stopping | the frontier is empty | the plan has a goal, constraints, an approach, validation and a next step |
+| calibration | none | knowledge level and pressure level, both adjustable mid-session |
+| per question | a recommended answer | a recommended answer and one line of why it matters |
+| ending | nothing, stateless by design | a spoken summary of plan, open questions, next action and risks |
+
+The batching difference is the one that matters and this skill keeps Pocock's, because a round of
+four tappable questions is one thing to answer from a phone and four separate turns is four. The
+ladder is the part of Brussee's worth stealing and it is assessed in
+[`meta/adoption.md`](../../../meta/adoption.md) rather than taken quietly.
+
 ## Not taken
 
 `grill-with-docs`, which grills against a codebase, for the same reason `how`, `why` and `recall`
