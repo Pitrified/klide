@@ -111,7 +111,9 @@ Numbered `G` for this folder, continuing across batches.
   dotfiles is a copy when it earns it.
 - G3: Whether the rounds have a stopping rule, or run until the user stops them. The source does not
   say. A fixed count is easy to gate on and easy to make useless.
-  NEW_ANS:
+  NEW_ANS: Answered by writing the skill: it stops when the frontier is empty, which is when every
+  decision whose prerequisites are settled has been asked. Not a count. Left blank when the other
+  four were filled, and noticed on 2026-09-19.
 - G4: Whether this needs the `skillify` treatment rather than being written cold. `skillify` triages
   on a refinement arc, something that failed and was corrected, and this has none: it is an outside
   pattern being ported, closer to the pstack and deslopify path.
