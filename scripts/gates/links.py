@@ -6,6 +6,7 @@ when a file is renamed, which is the failure the plan folders actually hit.
 """
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -25,9 +26,25 @@ def broken(md: Path) -> list[str]:
     return out
 
 
+def tracked() -> list[Path]:
+    """Every markdown file the repo owns, which is what git already knows.
+
+    Walking the tree instead picks up vendored markdown under `.venv`, where a broken
+    relative link is somebody else's and unfixable here. Untracked files are included so a
+    new plan file is checked before it is committed, ignored ones are not.
+    """
+    out = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "*.md"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return sorted(ROOT / name for name in out.stdout.split("\0") if name)
+
+
 def main(argv: list[str]) -> int:
-    files = [Path(a).resolve() for a in argv] or sorted(ROOT.rglob("*.md"))
-    files = [f for f in files if ".git" not in f.parts]
+    files = [Path(a).resolve() for a in argv] or tracked()
     findings = [f for md in files for f in broken(md)]
     for f in findings:
         print(f"broken link: {f}")
