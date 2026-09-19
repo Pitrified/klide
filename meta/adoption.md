@@ -65,6 +65,28 @@ since this repo bans em dashes outright where the original only counts their den
 The other repos on this box carry the same "How to write" section as this one, checked on 2026-09-16.
 Nothing in them needed folding in, and the script is written to be copied out to them unchanged.
 
+## A third source
+
+[grill-me](https://github.com/mattpocock/skills) by Matt Pocock, taken and adapted on 2026-09-19 as
+[`.claude/skills/grill-me/`](../.claude/skills/grill-me/). It fills a step that had a name and no
+procedure: `tracked-development` says what a `00_start.md` contains and assumes the idea already has
+enough shape to write one. The interview is how it gets that shape.
+
+Taken after running it by hand first, on the reader UI, which is
+[`plans/07_reader_ui/`](../plans/07_reader_ui/00_start.md). Two rounds, eight questions, three of
+which changed the design. Doing it by hand before writing it down is the same order the deslopify
+scanner was built in, and it is the reason the skill says what it says about facts.
+
+The changes from the original are listed in
+[`.claude/skills/grill-me/README.md`](../.claude/skills/grill-me/README.md). The one that matters is
+that it is not stateless: upstream leaves no artifact by design, and here the interview ends by
+writing the plan folder. The sibling `grill-with-docs` is rejected for the reason `how`, `why` and
+`recall` were, which is that it needs a history to ground in.
+
+This is a third skill description loaded into every session, on the order of the 60 words the
+principles cost. Three sources, three skills, and the ceiling is worth watching rather than assuming:
+the cost of a skill is paid every session and the benefit only when it is invoked.
+
 ## What to re-read later
 
 pstack is worth a second pass once the app has code and the gates exist. The parts most likely to become

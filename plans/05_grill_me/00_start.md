@@ -1,5 +1,5 @@
 ---
-status: draft
+status: done
 ---
 
 # grill-me - bootstrap
@@ -15,6 +15,13 @@ because it is executable on its own later and nothing in the meta track waits on
 
 Source read on 2026-09-17: <https://www.aihero.dev/skills-grill-me>. The page describes the skill,
 it does not publish the `SKILL.md`, so the body would be written here rather than copied.
+
+Corrected on 2026-09-19: it is published, at
+[mattpocock/skills](https://github.com/mattpocock/skills), MIT. The claim above was true of the
+write-up and was never checked against a repository. What the source turned out to be is two files,
+a `grill-me` stub carrying `disable-model-invocation: true` that calls a `grilling` skill holding the
+body, and the body is a design tree worked in rounds. Most of the guesses below survived contact with
+it; the stopping rule did not, and G3 has the source's answer rather than an invented one.
 
 ## What the skill is
 
@@ -88,14 +95,20 @@ Numbered `G` for this folder, continuing across batches.
   b. write nothing until the user says where it goes
   Recommended: a, because the case the skill exists for is an idea vague enough that the user does
   not yet know it deserves a folder, and a draft folder is cheap to discard.
-  NEW_ANS:
+  NEW_ANS: a, confirmed by doing it. The reader UI interview wrote `plans/07_reader_ui/` at the end
+  of the second round and nothing was lost when the conversation moved on. The skill adds one thing
+  the question did not anticipate: write `00_start.md` alone unless the work is really multi-phase,
+  because manufacturing four phases for an afternoon's work is its own kind of noise.
 - G2: Where the skill lives. The repo's `.claude/skills/` like `principles` and `deslopify`, or
   `~/dotfiles` like the symlinked ones, given it is project independent by design.
   a. repo, and lift it out later if it earns it
   b. dotfiles from the start, shared across every repo on this box
   Recommended: b, because unlike `principles` nothing in it is specific to klide, and the meta
   track's MD2 says these artifacts are meant to be lifted out anyway.
-  NEW_ANS:
+  NEW_ANS: a for now. It sits in the repo like `deslopify`, which is equally project independent and
+  was left there for the same reason: the repo is where the record of what was adapted lives, and a
+  skill that has been used once is not yet known to be worth carrying everywhere. Lifting it to
+  dotfiles is a copy when it earns it.
 - G3: Whether the rounds have a stopping rule, or run until the user stops them. The source does not
   say. A fixed count is easy to gate on and easy to make useless.
   NEW_ANS:
@@ -103,8 +116,21 @@ Numbered `G` for this folder, continuing across batches.
   on a refinement arc, something that failed and was corrected, and this has none: it is an outside
   pattern being ported, closer to the pstack and deslopify path.
   Recommended: write it cold, following the `adoption.md` pattern, and add the third-source row there.
-  NEW_ANS:
+  NEW_ANS: neither, as it turned out. It was run by hand first, on the reader UI, and written from
+  what that sitting taught plus the published source. That is closer to how the deslopify scanner was
+  built than to either option here. The third-source row is in `meta/adoption.md`.
 - G5: Does it reuse the interaction under review in MD4. The interview is a specific interaction
   shape, and the meta track's phase 3 is about the interaction contract. If they overlap, this folder
   might be an input to that phase rather than a standalone skill.
-  NEW_ANS:
+  NEW_ANS: both, and they do not conflict. It is a standalone skill, and it is also an input to meta
+  phase 3, because it is the first named shape this repo has for the part of the interaction where
+  the user decides and the agent finds things out. The diary review's count, 12 corrections in 34
+  turns, is what an interaction without that shape costs.
+
+## What happened
+
+Promoted to [`../../.claude/skills/grill-me/`](../../.claude/skills/grill-me/) on 2026-09-19, with
+the changes from the original listed in its `README.md` and the third-source row in
+[`../../meta/adoption.md`](../../meta/adoption.md). All five questions are answered above. GD1 to GD4
+hold as written; what they did not anticipate is that the source would turn out to be published, so
+the body is adapted rather than reconstructed.
